@@ -1,0 +1,9 @@
+# Ignorar o cofre de senhas
+.env
+
+# Ignorar o banco de dados com as informações reais dos clientes
+banco_dados.db
+
+# Ignorar pastas virtuais do Python
+.venv/
+__pycache__/

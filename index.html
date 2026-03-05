@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerezin</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class', 
+            theme: {
+                extend: {
+                    colors: {
+                        primaria: '#0f172a',
+                        secundaria: '#0ea5e9',
+                        destaque: '#6366f1',
+                        fundo: '#f8fafc'
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'fade-in-up': 'fadeInUp 0.4s ease-out forwards'
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        .animar-entrada { animation: fadeInUp 0.4s ease-out forwards; }
+
+        /* Ajustes do Calendário */
+        .fc-theme-standard td, .fc-theme-standard th, .fc-theme-standard .fc-scrollgrid { border-color: rgba(148, 163, 184, 0.2) !important; }
+        .fc .fc-button-primary { background-color: #0f172a !important; border: none !important; }
+        .dark .fc .fc-button-primary { background-color: #1e293b !important; }
+        .fc .fc-button-primary:not(:disabled):active, .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: #0ea5e9 !important; }
+        .fc-day-today { background-color: rgba(14, 165, 233, 0.05) !important; }
+        .fc-event { cursor: pointer; padding: 2px 4px; font-weight: bold; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans flex flex-col h-screen overflow-hidden transition-colors duration-500 relative selection:bg-secundaria selection:text-white">
+
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div class="absolute top-[-10%] left-[10%] w-96 h-96 bg-secundaria/20 dark:bg-secundaria/10 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
+        <div class="absolute top-[20%] right-[10%] w-96 h-96 bg-destaque/20 dark:bg-destaque/10 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob" style="animation-delay: 2s"></div>
+        <div class="absolute bottom-[-20%] left-[30%] w-96 h-96 bg-emerald-400/20 dark:bg-emerald-400/10 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob" style="animation-delay: 4s"></div>
+    </div>
+
+    <div id="tela-login" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-50 dark:bg-slate-900 transition-opacity duration-500">
+        <div class="absolute top-[-10%] left-[10%] w-96 h-96 bg-secundaria/30 rounded-full filter blur-3xl opacity-50 animate-blob"></div>
+        
+        <div class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-2xl p-10 rounded-[2rem] shadow-2xl border border-white/50 dark:border-slate-700 w-full max-w-md relative z-10 mx-4">
+            <div class="text-center mb-8">
+                <img src="logo_gerezin.png" alt="Gerezin Logo" class="h-20 mx-auto mb-4" onerror="this.style.display='none'">
+                <h2 class="text-3xl font-extrabold text-primaria dark:text-white">Acesso Restrito</h2>
+                <p class="text-slate-500 mt-2">Área de gestão operacional e financeira.</p>
+            </div>
+
+            <form onsubmit="fazerLogin(event)" class="flex flex-col gap-5">
+                <div>
+                    <label class="block text-sm font-bold text-primaria dark:text-slate-300 mb-2">Usuário</label>
+                    <input type="text" id="login-user" placeholder="Digite seu usuário" class="w-full p-4 bg-white/50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secundaria outline-none dark:text-white" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-primaria dark:text-slate-300 mb-2">Senha</label>
+                    <input type="password" id="login-pass" placeholder="••••••••" class="w-full p-4 bg-white/50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secundaria outline-none dark:text-white" required>
+                </div>
+                <p id="msg-erro-login" class="text-red-500 font-bold text-sm text-center hidden">⚠️ Usuário ou senha incorretos!</p>
+                <button type="submit" class="w-full bg-secundaria hover:bg-sky-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-secundaria/30 transition-all mt-2 text-lg">
+                    Entrar no Sistema
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="sistema-principal" class="hidden flex-col h-screen w-full">
+        
+        <header class="w-full px-6 py-4 z-20">
+            <div class="max-w-7xl mx-auto bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white/40 dark:border-slate-700/50 shadow-xl shadow-slate-200/20 dark:shadow-black/20 rounded-2xl flex flex-col md:flex-row items-center justify-between px-6 py-3 transition-all duration-300">
+                <div class="flex-shrink-0 mb-4 md:mb-0 cursor-pointer hover:scale-105 transition-transform" onclick="mudarAba('hub', document.getElementById('btn-dashboard'))">
+                    <img id="logo-sistema" src="logo_gerezin.png" alt="Logo" class="max-h-12 object-contain" onerror="this.style.display='none'">
+                </div>
+                
+                <nav class="flex flex-wrap justify-center gap-2 items-center">
+                    <button id="btn-dashboard" class="menu-btn bg-secundaria text-white shadow-lg shadow-secundaria/30 font-semibold px-4 py-2 rounded-xl transition-all hover:scale-105" onclick="mudarAba('hub', this)">📊 Dashboard</button>
+                    <button id="btn-menu-novo" class="menu-btn text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800 px-4 py-2 rounded-xl transition-all font-medium" onclick="prepararNovo(); mudarAba('novo', this)">➕ Novo</button>
+                    <button class="menu-btn text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800 px-4 py-2 rounded-xl transition-all font-medium" onclick="mudarAba('fila', this)">📋 Fila</button>
+                    <button class="menu-btn text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800 px-4 py-2 rounded-xl transition-all font-medium" onclick="mudarAba('calendario', this)">🗓️ Agenda</button>
+                    <button class="menu-btn text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800 px-4 py-2 rounded-xl transition-all font-medium" onclick="mudarAba('historico', this)">🗃️ Histórico</button>
+                    <button class="menu-btn text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800 px-4 py-2 rounded-xl transition-all font-medium" onclick="mudarAba('alertas', this)">🤖 Robô</button>
+                    <button class="menu-btn text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800 px-4 py-2 rounded-xl transition-all font-bold text-emerald-600 dark:text-emerald-400 border border-transparent hover:border-emerald-200 dark:hover:border-emerald-800" onclick="mudarAba('financeiro', this)">💰 Financeiro</button>
+                    
+                    <button onclick="alternarTema()" class="ml-2 p-2.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-yellow-400 hover:scale-110 transition-transform shadow-inner" title="Alternar Tema">
+                        <svg id="icone-sol" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <svg id="icone-lua" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    </button>
+
+                    <button onclick="fazerLogout()" class="ml-2 p-2.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500 hover:scale-110 transition-transform shadow-inner" title="Sair do Sistema">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto p-6 md:p-10 relative z-10">
+
+            <section id="hub" class="aba block max-w-6xl mx-auto animar-entrada">
+                <div class="text-center mb-12">
+                    <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-primaria via-secundaria to-destaque dark:from-white dark:via-sky-300 dark:to-destaque">Controle Operacional</h1>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 text-center">
+                    <div onclick="mudarAba('fila', document.querySelectorAll('.menu-btn')[2])" class="cursor-pointer bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl p-8 rounded-3xl border border-white/40 dark:border-slate-700 shadow-xl shadow-slate-200/20 dark:shadow-none hover:-translate-y-2 transition-transform duration-300 flex flex-col items-center justify-center">
+                        <div class="w-14 h-14 bg-secundaria/10 text-secundaria rounded-2xl flex items-center justify-center text-2xl mb-4">📋</div>
+                        <span class="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Fila Hoje</span>
+                        <span class="text-6xl font-black text-primaria dark:text-white mt-2" id="metrica-fila">0</span>
+                    </div>
+                    <div onclick="mudarAba('historico', document.querySelectorAll('.menu-btn')[4])" class="cursor-pointer bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl p-8 rounded-3xl border border-white/40 dark:border-slate-700 shadow-xl shadow-slate-200/20 dark:shadow-none hover:-translate-y-2 transition-transform duration-300 flex flex-col items-center justify-center">
+                        <div class="w-14 h-14 bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center text-2xl mb-4">✅</div>
+                        <span class="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Concluídos</span>
+                        <span class="text-6xl font-black text-primaria dark:text-white mt-2" id="metrica-concluidos">0</span>
+                    </div>
+                    <div onclick="mudarAba('alertas', document.querySelectorAll('.menu-btn')[5])" class="cursor-pointer bg-orange-50/60 dark:bg-orange-900/20 backdrop-blur-xl p-8 rounded-3xl border border-orange-200/50 dark:border-orange-800/50 shadow-xl shadow-orange-200/20 dark:shadow-none hover:-translate-y-2 transition-transform duration-300 flex flex-col items-center justify-center">
+                        <div class="w-14 h-14 bg-orange-500/10 text-orange-500 rounded-2xl flex items-center justify-center text-2xl mb-4">🤖</div>
+                        <span class="text-sm font-bold text-orange-600 dark:text-orange-400 uppercase tracking-widest">Alertas (Vendas)</span>
+                        <span class="text-6xl font-black text-orange-600 dark:text-orange-400 mt-2" id="metrica-alertas">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <section id="financeiro" class="aba hidden max-w-6xl mx-auto">
+                <div class="text-center mb-10">
+                    <h1 class="text-4xl font-extrabold text-primaria dark:text-white mb-2">Controle Financeiro</h1>
+                    <p class="text-slate-500">Gestão de pagamentos e faturamento dos serviços.</p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+                    <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 text-center">
+                        <div class="bg-emerald-50/80 dark:bg-emerald-900/20 backdrop-blur-xl p-6 rounded-3xl border border-emerald-200 dark:border-emerald-800/50 shadow-xl shadow-emerald-200/20 dark:shadow-none flex flex-col items-center justify-center h-full">
+                            <span class="text-sm font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-widest mb-1">Total Recebido</span>
+                            <span class="text-4xl font-black text-emerald-600 dark:text-emerald-400" id="metrica-recebido">R$ 0,00</span>
+                        </div>
+                        <div class="bg-amber-50/80 dark:bg-amber-900/20 backdrop-blur-xl p-6 rounded-3xl border border-amber-200 dark:border-amber-800/50 shadow-xl shadow-amber-200/20 dark:shadow-none flex flex-col items-center justify-center h-full">
+                            <span class="text-sm font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest mb-1">A Receber (Pendentes)</span>
+                            <span class="text-4xl font-black text-amber-600 dark:text-amber-400" id="metrica-pendente">R$ 0,00</span>
+                        </div>
+                    </div>
+                    <div class="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl p-4 rounded-3xl border border-white/40 dark:border-slate-700 shadow-xl flex justify-center items-center h-64">
+                        <canvas id="grafico-financas"></canvas>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">
+                    <h3 class="font-bold text-xl text-primaria dark:text-white">Lançamentos</h3>
+                    <button onclick="exportarExcel()" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-sm transition-all shadow-md shadow-emerald-500/30 flex items-center gap-2">
+                        📊 Exportar p/ Excel
+                    </button>
+                </div>
+                <div id="lista-financeiro" class="flex flex-col gap-5"></div>
+            </section>
+
+            <section id="calendario" class="aba hidden max-w-6xl mx-auto">
+                <div class="text-center mb-6">
+                    <h1 class="text-4xl font-extrabold text-primaria dark:text-white mb-2">Agenda de Serviços</h1>
+                    <p class="text-slate-500">Visualize seus serviços agendados (Azul) e concluídos (Verde).</p>
+                </div>
+                <div class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl p-6 rounded-3xl border border-white/40 dark:border-slate-700 shadow-2xl shadow-slate-200/40 dark:shadow-none">
+                    <div id="div-calendario-visual" class="min-h-[600px] text-slate-700 dark:text-slate-200"></div>
+                </div>
+            </section>
+
+            <section id="novo" class="aba hidden max-w-4xl mx-auto">
+                <div class="text-center mb-10">
+                    <h1 id="titulo-aba-form" class="text-4xl font-extrabold text-primaria dark:text-white mb-2">Novo Registro</h1>
+                    <p id="subtitulo-aba-form" class="text-slate-500">Adicione clientes na fila ou registre serviços já finalizados.</p>
+                </div>
+                <div class="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl p-10 rounded-3xl border border-white/50 dark:border-slate-700 shadow-2xl shadow-slate-200/40 dark:shadow-none max-w-3xl mx-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <div class="flex flex-col gap-5">
+                            <h3 class="font-bold text-lg text-secundaria border-b border-slate-200 dark:border-slate-700 pb-2">Dados do Cliente</h3>
+                            <div>
+                                <label class="block text-sm font-bold text-primaria dark:text-slate-300 mb-1">Telefone (WhatsApp)</label>
+                                <input type="text" id="input-telefone" class="w-full p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secundaria outline-none transition-all dark:text-white" required>
+                                <p id="alerta-duplicado" class="text-xs text-red-500 font-bold mt-1 hidden">⚠️ Este telefone já está cadastrado!</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-primaria dark:text-slate-300 mb-1">Nome do Cliente / Loja</label>
+                                <input type="text" id="input-nome" class="w-full p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secundaria outline-none transition-all dark:text-white" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-primaria dark:text-slate-300 mb-1">Endereço Completo</label>
+                                <input type="text" id="input-endereco" class="w-full p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secundaria outline-none transition-all dark:text-white" required>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-5">
+                            <h3 class="font-bold text-lg text-secundaria border-b border-slate-200 dark:border-slate-700 pb-2">Detalhes do Serviço</h3>
+                            <div>
+                                <label class="block text-sm font-bold text-primaria dark:text-slate-300 mb-1">Tipo de Serviço</label>
+                                <input list="lista-servicos" id="input-servico" class="w-full p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secundaria outline-none transition-all dark:text-white" required>
+                                <datalist id="lista-servicos">
+                                    <option value="Limpeza de Ar Condicionado"></option>
+                                    <option value="Instalação de Ar Condicionado"></option>
+                                    <option value="Manutenção Preventiva"></option>
+                                    <option value="Carga de Gás"></option>
+                                    <option value="Desinstalação"></option>
+                                </datalist>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-bold text-primaria dark:text-slate-300 mb-1">Data</label>
+                                    <input type="date" id="input-data" class="w-full p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secundaria outline-none transition-all text-slate-600 dark:text-slate-300" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-primaria dark:text-slate-300 mb-1">Situação</label>
+                                    <select id="input-status-servico" onchange="verificarStatus()" class="w-full p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secundaria outline-none transition-all dark:text-white cursor-pointer">
+                                        <option value="Agendado">Fila (Agendado)</option>
+                                        <option value="Concluído">Já Concluído</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="div-valor" class="hidden animate-fade-in-up">
+                                <label class="block text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1">Valor Cobrado (R$)</label>
+                                <input type="number" id="input-valor" class="w-full p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all dark:text-white">
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-sm font-bold text-primaria dark:text-slate-300 mb-1">Pagamento</label>
+                                    <select id="input-status-pagamento" class="w-full p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secundaria outline-none transition-all dark:text-white cursor-pointer">
+                                        <option value="Pendente">⏳ Pendente</option>
+                                        <option value="Pago">💰 Já Pago</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center justify-center mt-6 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-2">
+                                    <label class="flex items-center gap-2 cursor-pointer font-bold text-sm text-orange-600 dark:text-orange-400">
+                                        <input type="checkbox" id="input-ligar" class="w-5 h-5 accent-orange-500 cursor-pointer">
+                                        📞 Ligar depois
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="md:col-span-2 mt-2">
+                            <label class="block text-sm font-bold text-primaria dark:text-slate-300 mb-1">Observações e Detalhes</label>
+                            <textarea id="input-detalhes" rows="2" class="w-full p-3 bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secundaria outline-none transition-all dark:text-white"></textarea>
+                        </div>
+
+                        <div class="md:col-span-2 relative group mt-4">
+                            <div class="absolute -inset-1 bg-gradient-to-r from-secundaria to-destaque rounded-xl blur opacity-60 group-hover:opacity-100 transition duration-200"></div>
+                            <button id="btn-salvar-form" class="relative w-full bg-primaria dark:bg-slate-900 text-white font-bold py-4 rounded-xl transition-all shadow-md text-lg" onclick="salvarCliente()">
+                                💾 Lançar no Sistema
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="fila" class="aba hidden max-w-5xl mx-auto">
+                <div class="text-center mb-10"><h1 class="text-4xl font-extrabold text-primaria dark:text-white mb-2">Fila de Trabalho</h1></div>
+                <div id="lista-pendentes" class="flex flex-col gap-5"></div>
+            </section>
+
+            <section id="historico" class="aba hidden max-w-5xl mx-auto">
+                <div class="text-center mb-6"><h1 class="text-4xl font-extrabold text-primaria dark:text-white mb-2">Histórico de Clientes</h1></div>
+                <div class="relative w-full max-w-2xl mx-auto mb-10"><div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><span class="text-xl opacity-60">🔍</span></div><input type="text" id="input-pesquisa" onkeyup="pesquisarHistorico()" placeholder="Buscar por cliente..." class="w-full pl-12 p-4 bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-white/50 dark:border-slate-700 rounded-2xl shadow-lg focus:ring-2 focus:ring-secundaria outline-none dark:text-white"></div>
+                <div id="lista-concluidos" class="flex flex-col gap-5"></div>
+            </section>
+
+            <section id="alertas" class="aba hidden max-w-5xl mx-auto">
+                <div class="text-center mb-10"><h1 class="text-4xl font-extrabold text-primaria dark:text-white mb-2">Robô de Retenção</h1></div>
+                <div id="lista-alertas" class="flex flex-col gap-5"></div>
+            </section>
+
+            <div class="h-24"></div>
+        </main>
+
+        <div id="modal-concluir" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
+            <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-2xl max-w-md w-full border border-slate-200 dark:border-slate-700 transform transition-all">
+                <h2 class="text-2xl font-bold text-primaria dark:text-white mb-2">Finalizar Serviço ✅</h2>
+                <div class="mb-4"><label class="block text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-2">Valor (R$)</label><input type="number" id="input-modal-valor" class="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secundaria outline-none dark:text-white" required></div>
+                <div class="mb-8"><label class="block text-sm font-bold text-primaria dark:text-slate-300 mb-2">Status</label><select id="input-modal-pago" class="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-secundaria outline-none dark:text-white cursor-pointer"><option value="Pago">💰 Sim, já pagou</option><option value="Pendente">⏳ Pendente</option></select></div>
+                <div class="flex gap-4"><button onclick="fecharModalConcluir()" class="flex-1 px-4 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white rounded-xl font-bold hover:bg-slate-300 transition-colors">Cancelar</button><button onclick="confirmarConclusao()" class="flex-1 px-4 py-3 bg-secundaria hover:bg-sky-500 text-white rounded-xl font-bold shadow-lg transition-all">Salvar Faturamento</button></div>
+            </div>
+        </div>
+
+        <div id="modal-detalhes" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4">
+            <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-2xl max-w-md w-full border border-slate-200 dark:border-slate-700 transform transition-all relative">
+                <button onclick="fecharModalDetalhes()" class="absolute top-4 right-5 text-slate-400 hover:text-slate-600 dark:hover:text-white text-3xl font-bold">&times;</button>
+                <h2 class="text-2xl font-bold text-primaria dark:text-white mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Relatório do Serviço</h2>
+                <div class="space-y-3 mb-8 text-sm text-slate-700 dark:text-slate-300">
+                    <p><strong class="text-secundaria">Cliente:</strong> <span id="detalhe-nome"></span></p>
+                    <p><strong class="text-secundaria">Telefone:</strong> <span id="detalhe-telefone"></span></p>
+                    <p><strong class="text-secundaria">Endereço:</strong> <span id="detalhe-endereco"></span></p>
+                    <p><strong class="text-secundaria">Serviço:</strong> <span id="detalhe-servico"></span></p>
+                    <p><strong class="text-secundaria">Data:</strong> <span id="detalhe-data"></span></p>
+                    <p><strong class="text-secundaria">Situação:</strong> <span id="detalhe-situacao"></span></p>
+                    <p><strong class="text-secundaria">Pagamento:</strong> <span id="detalhe-pagamento"></span></p>
+                    <p id="linha-detalhe-valor" class="hidden"><strong class="text-secundaria">Valor Cobrado:</strong> <span id="detalhe-valor"></span></p>
+                    <div class="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-100 dark:border-slate-700 mt-2">
+                        <strong class="text-secundaria block mb-1">Observações:</strong><span id="detalhe-obs" class="italic"></span>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button id="btn-modal-editar" class="flex-1 px-4 py-3 bg-white dark:bg-slate-900 border border-blue-200 text-blue-500 hover:bg-blue-50 rounded-xl font-bold transition-all shadow-sm">✏️ Editar</button>
+                    <button id="btn-modal-excluir" class="flex-1 px-4 py-3 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl font-bold transition-all">🗑️ Excluir</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let listaDeClientesAtuais = [];
+        let clienteSendoEditadoId = null; 
+        let idParaConcluir = null;
+        let graficoFinancas = null;
+        let calendarioApp = null;
+
+        const formatadorFinanceiro = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // ==== SEGURANÇA ====
+        function checarAcesso() {
+            const cracha = localStorage.getItem("token_gerezin");
+            if (cracha) {
+                document.getElementById("tela-login").classList.add("hidden");
+                document.getElementById("sistema-principal").classList.remove("hidden");
+                document.getElementById("sistema-principal").classList.add("flex");
+                carregarClientes(); 
+            } else {
+                document.getElementById("tela-login").classList.remove("hidden");
+                document.getElementById("sistema-principal").classList.add("hidden");
+                document.getElementById("sistema-principal").classList.remove("flex");
+            }
+        }
+
+        function fazerLogin(evento) {
+            evento.preventDefault();
+            const usuario = document.getElementById("login-user").value;
+            const senha = document.getElementById("login-pass").value;
+
+            const pacoteLogin = new URLSearchParams();
+            pacoteLogin.append("username", usuario);
+            pacoteLogin.append("password", senha);
+
+            fetch("http://localhost:8000/login", { method: "POST", body: pacoteLogin })
+            .then(resposta => {
+                if(!resposta.ok) throw new Error("Acesso Negado");
+                return resposta.json();
+            })
+            .then(dados => {
+                localStorage.setItem("token_gerezin", dados.access_token);
+                document.getElementById("msg-erro-login").classList.add("hidden");
+                checarAcesso();
+            })
+            .catch(() => { document.getElementById("msg-erro-login").classList.remove("hidden"); });
+        }
+
+        function fazerLogout() { localStorage.removeItem("token_gerezin"); checarAcesso(); }
+        function cabecalhoSeguro() { return { "Content-Type": "application/json", "Authorization": "Bearer " + localStorage.getItem("token_gerezin") }; }
+
+        // ==== CONTROLE DE TELA ====
+        function alternarTema() { document.documentElement.classList.toggle('dark'); }
+
+        function mudarAba(idAba, botaoClicado) {
+            document.querySelectorAll('.aba').forEach(aba => { aba.classList.remove('block', 'animar-entrada'); aba.classList.add('hidden'); });
+            document.querySelectorAll('.menu-btn').forEach(btn => { btn.classList.remove('bg-secundaria', 'text-white', 'shadow-lg', 'shadow-secundaria/30'); btn.classList.add('text-slate-600', 'dark:text-slate-300'); });
+            
+            const abaAtiva = document.getElementById(idAba);
+            abaAtiva.classList.remove('hidden'); abaAtiva.classList.add('block');
+            abaAtiva.style.animation = 'none'; abaAtiva.offsetHeight; abaAtiva.style.animation = null; abaAtiva.classList.add('animar-entrada');
+            
+            if (botaoClicado) {
+                botaoClicado.classList.remove('text-slate-600', 'dark:text-slate-300');
+                botaoClicado.classList.add('bg-secundaria', 'text-white', 'shadow-lg', 'shadow-secundaria/30');
+            }
+            if (idAba === 'calendario' && calendarioApp) { setTimeout(() => { calendarioApp.render(); }, 100); }
+        }
+
+        // ==== FUNÇÕES DO SISTEMA ====
+        function abrirModalDetalhes(id) {
+            const cliente = listaDeClientesAtuais.find(c => c.id === parseInt(id));
+            if (!cliente) return;
+            document.getElementById('detalhe-nome').innerText = cliente.nome;
+            document.getElementById('detalhe-telefone').innerText = cliente.telefone;
+            document.getElementById('detalhe-endereco').innerText = cliente.endereco;
+            document.getElementById('detalhe-servico').innerText = cliente.tipo_servico;
+            document.getElementById('detalhe-data').innerText = cliente.data_servico.split('-').reverse().join('/');
+            document.getElementById('detalhe-situacao').innerText = cliente.status_servico;
+            document.getElementById('detalhe-pagamento').innerText = cliente.status_pagamento;
+            
+            if (parseFloat(cliente.valor) > 0) {
+                document.getElementById('linha-detalhe-valor').classList.remove('hidden');
+                document.getElementById('detalhe-valor').innerText = formatadorFinanceiro.format(parseFloat(cliente.valor) || 0);
+            } else { document.getElementById('linha-detalhe-valor').classList.add('hidden'); }
+
+            document.getElementById('detalhe-obs').innerText = cliente.detalhes || "Nenhuma anotação extra.";
+            document.getElementById('btn-modal-editar').onclick = function() { fecharModalDetalhes(); prepararEdicao(cliente.id); };
+            document.getElementById('btn-modal-excluir').onclick = function() { fecharModalDetalhes(); apagarCliente(cliente.id); };
+            document.getElementById('modal-detalhes').classList.remove('hidden');
+        }
+
+        function fecharModalDetalhes() { document.getElementById('modal-detalhes').classList.add('hidden'); }
+
+        function iniciarCalendario() {
+            const espacoCalendario = document.getElementById('div-calendario-visual');
+            calendarioApp = new FullCalendar.Calendar(espacoCalendario, {
+                initialView: 'dayGridMonth', locale: 'pt-br', 
+                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
+                buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana' },
+                events: [],
+                eventClick: function(info) { abrirModalDetalhes(info.event.id); }
+            });
+            calendarioApp.render();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            iniciarCalendario();
+            checarAcesso(); 
+        });
+
+        function verificarStatus() {
+            const status = document.getElementById("input-status-servico").value;
+            const divValor = document.getElementById("div-valor");
+            if(status === "Concluído") divValor.classList.remove("hidden");
+            else { divValor.classList.add("hidden"); if(!clienteSendoEditadoId) document.getElementById("input-valor").value = ""; }
+        }
+
+        function prepararNovo() {
+            clienteSendoEditadoId = null;
+            document.querySelectorAll('input[type="text"], input[type="date"], input[type="number"], textarea').forEach(i => i.value = '');
+            document.getElementById("input-ligar").checked = false;
+            document.getElementById("input-status-servico").value = "Agendado";
+            document.getElementById("input-status-pagamento").value = "Pendente";
+            verificarStatus();
+            document.getElementById("alerta-duplicado").classList.add("hidden");
+            document.getElementById("titulo-aba-form").innerText = "Novo Registro";
+            document.getElementById("btn-salvar-form").innerText = "💾 Lançar no Sistema";
+        }
+
+        function prepararEdicao(id) {
+            const cliente = listaDeClientesAtuais.find(c => c.id === id);
+            if(!cliente) return;
+            clienteSendoEditadoId = id;
+            document.getElementById("input-telefone").value = cliente.telefone;
+            document.getElementById("input-nome").value = cliente.nome;
+            document.getElementById("input-endereco").value = cliente.endereco;
+            document.getElementById("input-servico").value = cliente.tipo_servico;
+            document.getElementById("input-data").value = cliente.data_servico;
+            document.getElementById("input-status-servico").value = cliente.status_servico;
+            document.getElementById("input-status-pagamento").value = cliente.status_pagamento;
+            document.getElementById("input-ligar").checked = cliente.ligar_mais_tarde === 1 || cliente.ligar_mais_tarde === true;
+            document.getElementById("input-valor").value = cliente.valor || "";
+            document.getElementById("input-detalhes").value = cliente.detalhes || "";
+            verificarStatus();
+            document.getElementById("alerta-duplicado").classList.add("hidden");
+            document.getElementById("titulo-aba-form").innerText = "✏️ Editar Registro";
+            document.getElementById("btn-salvar-form").innerText = "💾 Salvar Alterações";
+            mudarAba('novo', document.getElementById('btn-menu-novo'));
+        }
+
+        document.getElementById("input-telefone").addEventListener("input", function(e) {
+            if(clienteSendoEditadoId) return;
+            const tel = e.target.value.trim();
+            const existe = listaDeClientesAtuais.some(c => c.telefone === tel);
+            if(existe && tel !== "") document.getElementById("alerta-duplicado").classList.remove("hidden");
+            else document.getElementById("alerta-duplicado").classList.add("hidden");
+        });
+
+        function pesquisarHistorico() {
+            const termo = document.getElementById("input-pesquisa").value.toLowerCase();
+            const cartoes = document.getElementById("lista-concluidos").children;
+            for (let i = 0; i < cartoes.length; i++) {
+                if (cartoes[i].innerText.toLowerCase().includes(termo)) cartoes[i].classList.remove("hidden");
+                else cartoes[i].classList.add("hidden");
+            }
+        }
+
+        function abrirModalConcluir(id) { idParaConcluir = id; document.getElementById("modal-concluir").classList.remove("hidden"); }
+        function fecharModalConcluir() { idParaConcluir = null; document.getElementById("modal-concluir").classList.add("hidden"); document.getElementById("input-modal-valor").value = ""; document.getElementById("input-modal-pago").value = "Pago"; }
+
+        function confirmarConclusao() {
+            const valor = document.getElementById("input-modal-valor").value;
+            const statusPgto = document.getElementById("input-modal-pago").value;
+            if(!valor) { alert("Informe o valor cobrado!"); return; }
+
+            fetch("http://localhost:8000/clientes/" + idParaConcluir + "/concluir", { 
+                method: "PUT", headers: cabecalhoSeguro(), body: JSON.stringify({ valor: valor, status_pagamento: statusPgto })
+            }).then(r => {
+                if(r.status === 401) return fazerLogout();
+                fecharModalConcluir(); carregarClientes(); 
+            });
+        }
+
+        // O Botão do Excel com o código que arrumamos
+        function exportarExcel() {
+            if (listaDeClientesAtuais.length === 0) { alert("Não há dados para exportar."); return; }
+            
+            const dadosPlanilha = listaDeClientesAtuais.map(cliente => ({
+                "ID": cliente.id, 
+                "Cliente / Loja": cliente.nome, 
+                "Telefone": cliente.telefone, 
+                "Endereço": cliente.endereco,
+                "Tipo de Serviço": cliente.tipo_servico, 
+                "Data": cliente.data_servico.split('-').reverse().join('/'),
+                "Situação": cliente.status_servico, 
+                "Pagamento": cliente.status_pagamento,
+                "Valor (R$)": parseFloat(cliente.valor) || 0, 
+                "Ligar Depois?": cliente.ligar_mais_tarde ? "Sim" : "Não",
+                "Obs": cliente.detalhes || ""
+            }));
+
+            // Cria o "livro" do Excel
+            const arquivoExcel = XLSX.utils.book_new();
+            
+            // Cria a "página" dentro do livro com os nossos dados
+            const planilha = XLSX.utils.json_to_sheet(dadosPlanilha);
+            
+            // Cola a página dentro do livro
+            XLSX.utils.book_append_sheet(arquivoExcel, planilha, "Relatório");
+            
+            // Faz o download
+            XLSX.writeFile(arquivoExcel, "Relatorio_Financeiro_Gerezin.xlsx");
+        }
+
+        function carregarClientes() {
+            fetch("http://localhost:8000/clientes", { headers: cabecalhoSeguro() })
+                .then(resposta => {
+                    if (resposta.status === 401) { fazerLogout(); throw new Error("Token expirado"); }
+                    return resposta.json();
+                })
+                .then(dados => {
+                    listaDeClientesAtuais = dados; 
+
+                    const divPendentes = document.getElementById("lista-pendentes");
+                    const divConcluidos = document.getElementById("lista-concluidos");
+                    const divAlertas = document.getElementById("lista-alertas");
+                    const divFinanceiro = document.getElementById("lista-financeiro");
+                    
+                    divPendentes.innerHTML = ""; divConcluidos.innerHTML = ""; divAlertas.innerHTML = ""; divFinanceiro.innerHTML = "";
+
+                    const pendentes = dados.filter(c => c.status_servico === "Agendado");
+                    const financas = dados.filter(c => parseFloat(c.valor) > 0);
+
+                    const dataDeHoje = new Date();
+                    const umAnoEmMS = 1000 * 60 * 60 * 24 * 365;
+                    let listaDeAlertas = [];
+
+                    dados.filter(c => c.status_servico === "Concluído").forEach(cliente => {
+                        const dataServico = new Date(cliente.data_servico);
+                        const ehAr = cliente.tipo_servico.toLowerCase().includes("limpeza") || cliente.tipo_servico.toLowerCase().includes("instala") || cliente.tipo_servico.toLowerCase().includes("ar");
+                        if ((dataDeHoje - dataServico) > umAnoEmMS && ehAr) listaDeAlertas.push(cliente);
+                    });
+
+                    if(calendarioApp) {
+                        calendarioApp.removeAllEvents(); 
+                        dados.forEach(cliente => {
+                            calendarioApp.addEvent({
+                                id: cliente.id, title: `${cliente.nome} - ${cliente.tipo_servico}`, start: cliente.data_servico,
+                                allDay: true, backgroundColor: cliente.status_servico === 'Concluído' ? '#10b981' : '#0ea5e9', borderColor: 'transparent'
+                            });
+                        });
+                    }
+
+                    let totalRecebido = 0; let totalPendente = 0;
+                    financas.forEach(cliente => {
+                        const valor = parseFloat(cliente.valor);
+                        if(cliente.status_pagamento === "Pago") totalRecebido += valor; else totalPendente += valor;
+                    });
+
+                    document.getElementById("metrica-fila").innerText = pendentes.length;
+                    document.getElementById("metrica-concluidos").innerText = dados.filter(c => c.status_servico === "Concluído").length;
+                    document.getElementById("metrica-alertas").innerText = listaDeAlertas.length;
+                    document.getElementById("metrica-recebido").innerText = formatadorFinanceiro.format(totalRecebido);
+                    document.getElementById("metrica-pendente").innerText = formatadorFinanceiro.format(totalPendente);
+
+                    if (graficoFinancas) { graficoFinancas.destroy(); } 
+                    const ctx = document.getElementById('grafico-financas').getContext('2d');
+                    graficoFinancas = new Chart(ctx, {
+                        type: 'doughnut', data: { labels: ['💰 Recebido', '⏳ Pendente'], datasets: [{ data: [totalRecebido, totalPendente], backgroundColor: ['#10b981', '#f59e0b'], borderWidth: 0 }] },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#64748b', font: { weight: 'bold' } } } } }
+                    });
+
+                    function criarCartao(cliente, contexto) {
+                        const cartao = document.createElement("div");
+                        const dataFmt = cliente.data_servico.split('-').reverse().join('/');
+                        const valorFmt = formatadorFinanceiro.format(parseFloat(cliente.valor) || 0);
+                        
+                        const badgePagamento = cliente.status_pagamento === "Pago" ? `<span class="px-3 py-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded-full text-xs font-bold shadow-sm">💰 PAGO</span>` : `<span class="px-3 py-1 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-full text-xs font-bold shadow-sm">⏳ PENDENTE</span>`;
+                        const badgeLigar = cliente.ligar_mais_tarde && contexto !== "Financeiro" ? `<span class="px-3 py-1 bg-orange-500/10 text-orange-600 border border-orange-500/20 rounded-full text-xs font-bold ml-2">📞 LIGAR DEPOIS</span>` : ``;
+                        const badgeStatus = contexto === "Histórico" && cliente.status_servico === "Concluído" ? `<span class="px-3 py-1 bg-sky-500/10 text-sky-600 border border-sky-500/20 rounded-full text-xs font-bold ml-2">✅ CONCLUÍDO</span>` : (contexto === "Histórico" ? `<span class="px-3 py-1 bg-slate-500/10 text-slate-600 border border-slate-500/20 rounded-full text-xs font-bold ml-2">📝 FILA</span>` : ``);
+
+                        let classesBase = "bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 flex flex-col xl:flex-row justify-between items-center text-center xl:text-left gap-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 ";
+                        if (contexto === "Fila" || (contexto === "Histórico" && cliente.status_servico === "Agendado")) cartao.className = classesBase + "border-l-4 border-secundaria";
+                        else if (contexto === "Alerta") cartao.className = classesBase + "border-l-4 border-orange-500 bg-orange-50/50";
+                        else if (contexto === "Financeiro") cartao.className = classesBase + (cliente.status_pagamento === "Pago" ? "border-l-4 border-emerald-500" : "border-l-4 border-amber-500");
+                        else cartao.className = classesBase;
+
+                        // Os Botões do Cartão
+                        let acoes = `<div class="flex flex-wrap gap-3 w-full xl:w-auto mt-4 xl:mt-0 justify-center xl:justify-end">`;
+                        if (contexto === "Fila" || contexto === "Histórico") acoes += `<button onclick="prepararEdicao(${cliente.id})" class="px-5 py-2.5 bg-white dark:bg-slate-900 border border-blue-200 text-blue-500 rounded-xl font-bold text-sm shadow-sm">✏️ Editar</button>`;
+                        if (cliente.status_pagamento === "Pendente" && cliente.status_servico === "Concluído" && contexto !== "Alerta") acoes += `<button onclick="pagarServico(${cliente.id})" class="px-5 py-2.5 bg-white border-2 border-emerald-500 text-emerald-600 rounded-xl font-bold text-sm">💵 Receber ${valorFmt}</button>`;
+                        if (contexto === "Fila") {
+                            acoes += `<button onclick="abrirModalConcluir(${cliente.id})" class="px-5 py-2.5 bg-secundaria text-white rounded-xl font-bold text-sm">✅ Concluir Serviço</button>`;
+                            acoes += `<button onclick="apagarCliente(${cliente.id})" class="px-4 py-2.5 bg-red-50 text-red-500 rounded-xl font-bold">🗑️</button>`;
+                        } else if (contexto === "Histórico" || contexto === "Financeiro") acoes += `<button onclick="apagarCliente(${cliente.id})" class="px-5 py-2.5 bg-white border border-red-200 text-red-500 rounded-xl font-bold text-sm">🗑️ Excluir</button>`;
+                        else if (contexto === "Alerta") acoes += `<a href="https://wa.me/55${cliente.telefone.replace(/\D/g, '')}?text=Olá" target="_blank" class="px-6 py-3 bg-[#25D366] text-white rounded-xl font-bold text-sm">💬 Conversar</a>`;
+                        acoes += `</div>`;
+
+                        // Informações Extras do Cartão
+                        let info = "";
+                        if(contexto !== "Financeiro" && (cliente.valor || cliente.detalhes)) {
+                            info = `<div class="mt-3 text-sm text-slate-500 bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-lg text-left">`;
+                            if(cliente.valor && cliente.status_servico === "Concluído") info += `<b>Faturamento:</b> ${valorFmt} <br>`;
+                            if(cliente.detalhes) info += `<b>Detalhes:</b> ${cliente.detalhes}`;
+                            info += `</div>`;
+                        } else if(contexto === "Financeiro") {
+                            info = `<div class="mt-3 bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-lg flex justify-between items-center w-full max-w-sm"><span class="text-sm font-bold text-slate-500 uppercase tracking-widest">Valor do Serviço:</span><span class="text-xl font-black ${cliente.status_pagamento === "Pago" ? "text-emerald-500" : "text-amber-500"}">${valorFmt}</span></div>`;
+                        }
+
+                        // Montando o desenho do Cartão de forma mais legível
+                        cartao.innerHTML = `
+                            <div class="flex-1 w-full">
+                                <div class="flex flex-col xl:flex-row items-center gap-4 mb-4">
+                                    <h4 class="text-2xl font-black text-primaria dark:text-white">${cliente.nome}</h4>
+                                    <div>${cliente.status_servico === "Concluído" ? badgePagamento : ""} ${badgeLigar} ${badgeStatus}</div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm font-medium">
+                                    <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2">
+                                        <span class="text-secundaria text-lg">🔧</span> 
+                                        <span class="dark:text-slate-300">${cliente.tipo_servico}</span>
+                                    </div>
+                                    <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2">
+                                        <span class="text-secundaria text-lg">📅</span> 
+                                        <span class="dark:text-slate-300">${dataFmt}</span>
+                                    </div>
+                                    <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2 col-span-1 md:col-span-2">
+                                        <span class="text-secundaria text-lg">📱</span> 
+                                        <span class="dark:text-slate-300">${cliente.telefone} &nbsp;|&nbsp; 📍 ${cliente.endereco}</span>
+                                    </div>
+                                </div>
+                                ${info}
+                            </div>
+                            ${acoes}
+                        `;
+                        return cartao;
+                    }
+
+                    pendentes.forEach(c => divPendentes.appendChild(criarCartao(c, "Fila")));
+                    dados.forEach(c => divConcluidos.appendChild(criarCartao(c, "Histórico")));
+                    listaDeAlertas.forEach(c => divAlertas.appendChild(criarCartao(c, "Alerta")));
+                    financas.forEach(c => divFinanceiro.appendChild(criarCartao(c, "Financeiro")));
+                })
+                .catch(() => {});
+        }
+
+        function salvarCliente() {
+            const pacote = {
+                nome: document.getElementById("input-nome").value, telefone: document.getElementById("input-telefone").value,
+                tipo_servico: document.getElementById("input-servico").value, endereco: document.getElementById("input-endereco").value,
+                data_servico: document.getElementById("input-data").value, status_servico: document.getElementById("input-status-servico").value,
+                status_pagamento: document.getElementById("input-status-pagamento").value, ligar_mais_tarde: document.getElementById("input-ligar").checked,
+                detalhes: document.getElementById("input-detalhes").value, valor: document.getElementById("input-valor").value
+            };
+            const url = clienteSendoEditadoId ? `http://localhost:8000/clientes/${clienteSendoEditadoId}` : "http://localhost:8000/clientes";
+            
+            fetch(url, { method: clienteSendoEditadoId ? "PUT" : "POST", headers: cabecalhoSeguro(), body: JSON.stringify(pacote) })
+            .then(r => { 
+                if(r.status === 401) return fazerLogout(); 
+                prepararNovo(); 
+                alert("✅ Sucesso!"); 
+                carregarClientes(); 
+            });
+        }
+
+        function pagarServico(id) { fetch("http://localhost:8000/clientes/" + id + "/pagar", { method: "PUT", headers: cabecalhoSeguro() }).then(r => { if(r.status === 401) return fazerLogout(); carregarClientes(); }); }
+        
+        function apagarCliente(id) { 
+            if (confirm("⚠️ Excluir permanentemente?")) {
+                fetch("http://localhost:8000/clientes/" + id, { method: "DELETE", headers: cabecalhoSeguro() })
+                .then(r => { if(r.status === 401) return fazerLogout(); carregarClientes(); }); 
+            }
+        }
+
+    </script>
+</body>
+</html>
