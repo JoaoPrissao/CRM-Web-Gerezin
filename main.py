@@ -11,6 +11,7 @@ import os
 from dotenv import load_dotenv
 from fastapi import Response
 from fpdf import FPDF
+from fastapi.responses import FileResponse
 
 load_dotenv()
 
@@ -322,3 +323,19 @@ def gerar_recibo(cliente_id: int, usuario: str = Depends(verificar_token)):
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=Recibo_Gerezin_{cliente['nome'].replace(' ', '_')}.pdf"}
     )
+
+# ==========================================
+# ROTAS PARA ENTREGAR A TELA (FRONTEND)
+# ==========================================
+@app.get("/")
+def abrir_sistema():
+    # Quando alguém acessar o link raiz, entrega o HTML
+    return FileResponse("index.html")
+
+@app.get("/{nome_arquivo}")
+def entregar_arquivos_extras(nome_arquivo: str):
+    # Entrega a logo e o favicon se o HTML pedir
+    import os
+    if os.path.exists(nome_arquivo):
+        return FileResponse(nome_arquivo)
+    raise HTTPException(status_code=404, detail="Arquivo não encontrado")
