@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import psycopg2 
 from psycopg2.extras import RealDictCursor
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date # Adicionamos o 'date' aqui
 import jwt
 from passlib.context import CryptContext
 import os
@@ -239,6 +239,34 @@ def pagar_servico(cliente_id: int, cracha: dict = Depends(verificar_token)):
     caneta.close()
     conexao.close()
     return {"mensagem": "Pagamento confirmado no sistema."}
+
+
+# ==========================================
+# ROTA FINANCEIRA (NOVIDADE: FECHAMENTO DE MÊS)
+# ==========================================
+@app.get("/financeiro/mes-atual")
+def puxar_dados_do_mes(cracha: dict = Depends(verificar_token)):
+    # Apenas chefes podem ver os dados financeiros
+    if cracha.get("perfil") != "chefe":
+        raise HTTPException(status_code=403, detail="Acesso negado.")
+
+    conexao = conectar_banco()
+    caneta = conexao.cursor(cursor_factory=RealDictCursor)
+
+    # 1. Descobre que dia é hoje
+    hoje = date.today()
+    
+    # 2. Volta o calendário para o dia 01 deste mês (formato Ano-Mês-Dia)
+    primeiro_dia = hoje.replace(day=1).strftime("%Y-%m-%d")
+
+    # 3. Pede ao banco de dados apenas os clientes que têm data igual ou maior que o dia 01
+    caneta.execute("SELECT * FROM clientes WHERE data_servico >= %s", (primeiro_dia,))
+    servicos_do_mes = caneta.fetchall()
+
+    caneta.close()
+    conexao.close()
+    
+    return servicos_do_mes
 
 
 # ==========================================

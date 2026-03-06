@@ -43,7 +43,6 @@
         }
     </script>
     <style>
-        /* Ajustes visuais da barra de rolagem e do calendário */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -149,19 +148,45 @@
             </section>
 
             <section id="financeiro" class="aba hidden max-w-6xl mx-auto">
-                <div class="text-center mb-10">
-                    <h1 class="text-4xl font-extrabold text-primaria dark:text-white mb-2">Controle Financeiro</h1>
+                <div class="text-center mb-6">
+                    <h1 class="text-4xl font-extrabold text-primaria dark:text-white mb-2">Painel Financeiro</h1>
                     <p class="text-slate-500">Gestão de pagamentos e faturamento dos serviços.</p>
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-4 mb-8 justify-center items-center bg-white/60 dark:bg-slate-800/60 p-4 rounded-3xl border border-white/40 dark:border-slate-700 shadow-lg">
+                    <label class="font-bold text-primaria dark:text-slate-300 flex items-center gap-2">
+                        <span>📅</span> Filtrar Período:
+                    </label>
+                    <select id="filtro-ano" onchange="aplicarFiltroFinanceiro()" class="p-3 w-full md:w-auto rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-secundaria font-bold cursor-pointer transition-all">
+                        <option value="todos">Todos os Anos</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2025">2025</option>
+                    </select>
+                    <select id="filtro-mes" onchange="aplicarFiltroFinanceiro()" class="p-3 w-full md:w-auto rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-secundaria font-bold cursor-pointer transition-all">
+                        <option value="todos">Todos os Meses</option>
+                        <option value="01">Janeiro</option>
+                        <option value="02">Fevereiro</option>
+                        <option value="03" selected>Março</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Maio</option>
+                        <option value="06">Junho</option>
+                        <option value="07">Julho</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
                     <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 text-center">
                         <div class="bg-emerald-50/80 dark:bg-emerald-900/20 backdrop-blur-xl p-6 rounded-3xl border border-emerald-200 dark:border-emerald-800/50 shadow-xl shadow-emerald-200/20 dark:shadow-none flex flex-col items-center justify-center h-full">
                             <span class="text-sm font-bold text-emerald-600 dark:text-emerald-500 uppercase tracking-widest mb-1">Total Recebido</span>
-                            <span class="text-4xl font-black text-emerald-600 dark:text-emerald-400" id="metrica-recebido">R$ 0,00</span>
+                            <span class="text-4xl font-black text-emerald-600 dark:text-emerald-400 transition-all duration-300" id="metrica-recebido">R$ 0,00</span>
                         </div>
                         <div class="bg-amber-50/80 dark:bg-amber-900/20 backdrop-blur-xl p-6 rounded-3xl border border-amber-200 dark:border-amber-800/50 shadow-xl shadow-amber-200/20 dark:shadow-none flex flex-col items-center justify-center h-full">
                             <span class="text-sm font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest mb-1">A Receber (Pendentes)</span>
-                            <span class="text-4xl font-black text-amber-600 dark:text-amber-400" id="metrica-pendente">R$ 0,00</span>
+                            <span class="text-4xl font-black text-amber-600 dark:text-amber-400 transition-all duration-300" id="metrica-pendente">R$ 0,00</span>
                         </div>
                     </div>
                     <div class="bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl p-4 rounded-3xl border border-white/40 dark:border-slate-700 shadow-xl flex justify-center items-center h-64">
@@ -174,7 +199,7 @@
                         📊 Exportar p/ Excel
                     </button>
                 </div>
-                <div id="lista-financeiro" class="flex flex-col gap-5"></div>
+                <div id="lista-financeiro" class="flex flex-col gap-5 transition-all"></div>
             </section>
 
             <section id="calendario" class="aba hidden max-w-6xl mx-auto">
@@ -277,39 +302,29 @@
         let graficoFinancas = null;
         let calendarioApp = null;
 
-        // Ferramenta para formatar os valores em Reais (R$)
         const formatadorFinanceiro = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
         // === AUTENTICAÇÃO E SEGURANÇA ===
-        
-        // Verifica se quem abriu a tela já fez login antes
         function checarAcesso() {
             const cracha = localStorage.getItem("token_gerezin");
-            const perfil = localStorage.getItem("perfil_gerezin"); // Lê qual é o cargo da pessoa
+            const perfil = localStorage.getItem("perfil_gerezin"); 
             
             if (cracha) {
-                // Se tiver logado, esconde a tela de login e mostra o sistema
                 document.getElementById("tela-login").classList.add("hidden");
                 document.getElementById("sistema-principal").classList.remove("hidden");
                 document.getElementById("sistema-principal").classList.add("flex");
                 
-                // Esconde a aba do financeiro se for o login de operador (loja)
-                if (perfil === "chefe") {
-                    document.getElementById("btn-aba-financeiro").classList.remove("hidden");
-                } else {
-                    document.getElementById("btn-aba-financeiro").classList.add("hidden");
-                }
+                if (perfil === "chefe") { document.getElementById("btn-aba-financeiro").classList.remove("hidden"); } 
+                else { document.getElementById("btn-aba-financeiro").classList.add("hidden"); }
 
                 carregarClientes(); 
             } else {
-                // Se não tiver logado, tranca tudo e mostra só o login
                 document.getElementById("tela-login").classList.remove("hidden");
                 document.getElementById("sistema-principal").classList.add("hidden");
                 document.getElementById("sistema-principal").classList.remove("flex");
             }
         }
 
-        // Pega o usuário e senha digitados e envia para o Python validar
         function fazerLogin(evento) {
             evento.preventDefault();
             const usuario = document.getElementById("login-user").value;
@@ -317,7 +332,7 @@
 
             const pacoteLogin = new URLSearchParams();
             pacoteLogin.append("username", usuario);
-            pacoteLogin.append("password", senha); // <-- O zero intruso estava escondido aqui!
+            pacoteLogin.append("password", senha); 
 
             fetch("/login", { method: "POST", body: pacoteLogin })
             .then(resposta => {
@@ -325,28 +340,25 @@
                 return resposta.json();
             })
             .then(dados => {
-                // Salva a chave e o cargo no navegador para não precisar logar de novo
                 localStorage.setItem("token_gerezin", dados.access_token);
                 localStorage.setItem("perfil_gerezin", dados.perfil); 
                 document.getElementById("msg-erro-login").classList.add("hidden");
+                
+                // Define a data de hoje nos filtros sempre que fizer login
+                const hoje = new Date();
+                document.getElementById("filtro-ano").value = hoje.getFullYear().toString();
+                document.getElementById("filtro-mes").value = (hoje.getMonth() + 1).toString().padStart(2, '0');
+                
                 checarAcesso();
             })
             .catch(() => { document.getElementById("msg-erro-login").classList.remove("hidden"); });
         }
 
-        // Apaga a chave salva no navegador e volta pra tela de login
         function fazerLogout() { localStorage.removeItem("token_gerezin"); localStorage.removeItem("perfil_gerezin"); checarAcesso(); }
-        
-        // Envia a chave salva junto com os pedidos para o Python saber que estamos logados
         function cabecalhoSeguro() { return { "Content-Type": "application/json", "Authorization": "Bearer " + localStorage.getItem("token_gerezin") }; }
-
-        // Liga ou desliga o modo noturno (tela escura)
         function alternarTema() { document.documentElement.classList.toggle('dark'); }
 
-
         // === CONTROLE DA TELA E NAVEGAÇÃO ===
-
-        // Troca o conteúdo do meio da tela dependendo de qual botão do menu foi clicado
         function mudarAba(idAba, botaoClicado) {
             document.querySelectorAll('.aba').forEach(aba => { aba.classList.remove('block', 'animar-entrada'); aba.classList.add('hidden'); });
             document.querySelectorAll('.menu-btn').forEach(btn => { btn.classList.remove('bg-secundaria', 'text-white', 'shadow-lg', 'shadow-secundaria/30'); btn.classList.add('text-slate-600', 'dark:text-slate-300'); });
@@ -362,10 +374,7 @@
             if (idAba === 'calendario' && calendarioApp) { setTimeout(() => { calendarioApp.render(); }, 100); }
         }
 
-
         // === LÓGICA DE MODAIS E FORMULÁRIOS ===
-
-        // Pega as informações do cliente clicado e desenha elas no modal de Detalhes
         function abrirModalDetalhes(id) {
             const cliente = listaDeClientesAtuais.find(c => c.id === parseInt(id));
             if (!cliente) return;
@@ -391,26 +400,21 @@
             document.getElementById('modal-detalhes').classList.remove('hidden');
         }
 
-        // Esconde o modal de detalhes
         function fecharModalDetalhes() { document.getElementById('modal-detalhes').classList.add('hidden'); }
 
-        // Configura e liga o calendário na tela
         function iniciarCalendario() {
             const espacoCalendario = document.getElementById('div-calendario-visual');
             calendarioApp = new FullCalendar.Calendar(espacoCalendario, {
                 initialView: 'dayGridMonth', locale: 'pt-br', 
                 headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
                 buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana' },
-                events: [],
-                eventClick: function(info) { abrirModalDetalhes(info.event.id); }
+                events: [], eventClick: function(info) { abrirModalDetalhes(info.event.id); }
             });
             calendarioApp.render();
         }
 
-        // Assim que a tela carrega inteira, liga o calendário e tenta fazer o login automático
         document.addEventListener('DOMContentLoaded', function() { iniciarCalendario(); checarAcesso(); });
 
-        // Mostra o campo "Valor" apenas se o serviço for marcado como "Concluído"
         function verificarStatus() {
             const status = document.getElementById("input-status-servico").value;
             const divValor = document.getElementById("div-valor");
@@ -418,7 +422,6 @@
             else { divValor.classList.add("hidden"); if(!clienteSendoEditadoId) document.getElementById("input-valor").value = ""; }
         }
 
-        // Limpa todos os campos para preparar a tela para um cadastro totalmente novo
         function prepararNovo() {
             clienteSendoEditadoId = null;
             document.querySelectorAll('input[type="text"], input[type="date"], input[type="number"], textarea').forEach(i => i.value = '');
@@ -431,7 +434,6 @@
             document.getElementById("btn-salvar-form").innerText = "💾 Lançar no Sistema";
         }
 
-        // Puxa os dados de um cliente existente e joga nos inputs para poder editar
         function prepararEdicao(id) {
             const cliente = listaDeClientesAtuais.find(c => c.id === id);
             if(!cliente) return;
@@ -453,7 +455,6 @@
             mudarAba('novo', document.getElementById('btn-menu-novo'));
         }
 
-        // Avisa se o número de telefone que está sendo digitado já existe no banco
         document.getElementById("input-telefone").addEventListener("input", function(e) {
             if(clienteSendoEditadoId) return;
             const tel = e.target.value.trim();
@@ -462,7 +463,6 @@
             else document.getElementById("alerta-duplicado").classList.add("hidden");
         });
 
-        // Filtra os cartões da aba histórico conforme o usuário digita
         function pesquisarHistorico() {
             const termo = document.getElementById("input-pesquisa").value.toLowerCase();
             const cartoes = document.getElementById("lista-concluidos").children;
@@ -472,14 +472,9 @@
             }
         }
 
-        // Controle de abrir/fechar o modal de concluir serviço da Fila
         function abrirModalConcluir(id) { idParaConcluir = id; document.getElementById("modal-concluir").classList.remove("hidden"); }
         function fecharModalConcluir() { idParaConcluir = null; document.getElementById("modal-concluir").classList.add("hidden"); document.getElementById("input-modal-valor").value = ""; document.getElementById("input-modal-pago").value = "Pago"; }
 
-
-        // === COMUNICAÇÃO COM O SERVIDOR (PYTHON) E BANCO DE DADOS ===
-
-        // Pega o valor digitado no Modal e avisa o Python para encerrar o serviço
         function confirmarConclusao() {
             const valor = document.getElementById("input-modal-valor").value;
             const statusPgto = document.getElementById("input-modal-pago").value;
@@ -493,17 +488,151 @@
             });
         }
 
-        // Cria a planilha do Excel usando os dados atuais da tela
         function exportarExcel() {
-            if (listaDeClientesAtuais.length === 0) { alert("Não há dados para exportar."); return; }
-            const dadosPlanilha = listaDeClientesAtuais.map(cliente => ({ "ID": cliente.id, "Cliente / Loja": cliente.nome, "Telefone": cliente.telefone, "Endereço": cliente.endereco, "Tipo de Serviço": cliente.tipo_servico, "Data": cliente.data_servico.split('-').reverse().join('/'), "Situação": cliente.status_servico, "Pagamento": cliente.status_pagamento, "Valor (R$)": parseFloat(cliente.valor) || 0, "Ligar Depois?": cliente.ligar_mais_tarde ? "Sim" : "Não", "Obs": cliente.detalhes || "" }));
+            // Pega o que está filtrado no momento para exportar certinho
+            const anoSelecionado = document.getElementById("filtro-ano").value;
+            const mesSelecionado = document.getElementById("filtro-mes").value;
+            
+            const clientesFiltrados = listaDeClientesAtuais.filter(c => {
+                let passaFiltroAno = (anoSelecionado === "todos") || (c.data_servico.substring(0, 4) === anoSelecionado);
+                let passaFiltroMes = (mesSelecionado === "todos") || (c.data_servico.substring(5, 7) === mesSelecionado);
+                return passaFiltroAno && passaFiltroMes;
+            });
+
+            if (clientesFiltrados.length === 0) { alert("Não há dados no período selecionado para exportar."); return; }
+            
+            const dadosPlanilha = clientesFiltrados.map(cliente => ({ "ID": cliente.id, "Cliente / Loja": cliente.nome, "Telefone": cliente.telefone, "Endereço": cliente.endereco, "Tipo de Serviço": cliente.tipo_servico, "Data": cliente.data_servico.split('-').reverse().join('/'), "Situação": cliente.status_servico, "Pagamento": cliente.status_pagamento, "Valor (R$)": parseFloat(cliente.valor) || 0, "Ligar Depois?": cliente.ligar_mais_tarde ? "Sim" : "Não", "Obs": cliente.detalhes || "" }));
             const arquivoExcel = XLSX.utils.book_new();
             const planilha = XLSX.utils.json_to_sheet(dadosPlanilha);
             XLSX.utils.book_append_sheet(arquivoExcel, planilha, "Relatório");
-            XLSX.writeFile(arquivoExcel, "Relatorio_Financeiro_Gerezin.xlsx");
+            XLSX.writeFile(arquivoExcel, `Relatorio_Gerezin_${anoSelecionado}_${mesSelecionado}.xlsx`);
         }
 
-        // A FUNÇÃO PRINCIPAL: Puxa todos os dados do Python e desenha nas abas
+        // === CRIAÇÃO VISUAL DO CARTÃO ===
+        function criarCartao(cliente, contexto) {
+            const perfilUsuario = localStorage.getItem("perfil_gerezin");
+            const cartao = document.createElement("div");
+            const dataFmt = cliente.data_servico.split('-').reverse().join('/');
+            const valorFmt = formatadorFinanceiro.format(parseFloat(cliente.valor) || 0);
+            
+            const badgePagamento = cliente.status_pagamento === "Pago" ? `<span class="px-3 py-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded-full text-xs font-bold shadow-sm">💰 PAGO</span>` : `<span class="px-3 py-1 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-full text-xs font-bold shadow-sm">⏳ PENDENTE</span>`;
+            const badgeLigar = cliente.ligar_mais_tarde && contexto !== "Financeiro" ? `<span class="px-3 py-1 bg-orange-500/10 text-orange-600 border border-orange-500/20 rounded-full text-xs font-bold ml-2">📞 LIGAR DEPOIS</span>` : ``;
+            const badgeStatus = contexto === "Histórico" && cliente.status_servico === "Concluído" ? `<span class="px-3 py-1 bg-sky-500/10 text-sky-600 border border-sky-500/20 rounded-full text-xs font-bold ml-2">✅ CONCLUÍDO</span>` : (contexto === "Histórico" ? `<span class="px-3 py-1 bg-slate-500/10 text-slate-600 border border-slate-500/20 rounded-full text-xs font-bold ml-2">📝 FILA</span>` : ``);
+
+            let classesBase = "bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 flex flex-col xl:flex-row justify-between items-center text-center xl:text-left gap-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 ";
+            
+            if (contexto === "Fila" || (contexto === "Histórico" && cliente.status_servico === "Agendado")) cartao.className = classesBase + "border-l-4 border-secundaria";
+            else if (contexto === "Alerta") cartao.className = classesBase + "border-l-4 border-orange-500 bg-orange-50/50";
+            else if (contexto === "Financeiro") cartao.className = classesBase + (cliente.status_pagamento === "Pago" ? "border-l-4 border-emerald-500" : "border-l-4 border-amber-500");
+            else cartao.className = classesBase;
+
+            let acoes = `<div class="flex flex-wrap gap-3 w-full xl:w-auto mt-4 xl:mt-0 justify-center xl:justify-end">`;
+            
+            if (cliente.status_servico === "Concluído" && (contexto === "Histórico" || contexto === "Financeiro")) {
+                acoes += `<button onclick="baixarRecibo(${cliente.id}, this)" class="px-5 py-2.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border border-emerald-200 dark:border-emerald-900 rounded-xl font-bold text-sm shadow-sm transition-all hover:bg-emerald-500 hover:text-white">📄 Recibo</button>`;
+            }
+
+            if (contexto === "Fila" || contexto === "Histórico") acoes += `<button onclick="prepararEdicao(${cliente.id})" class="px-5 py-2.5 bg-white dark:bg-slate-900 border border-blue-200 text-blue-500 rounded-xl font-bold text-sm shadow-sm">✏️ Editar</button>`;
+            
+            if (cliente.status_pagamento === "Pendente" && cliente.status_servico === "Concluído" && contexto !== "Alerta" && perfilUsuario === "chefe") {
+                acoes += `<button onclick="pagarServico(${cliente.id})" class="px-5 py-2.5 bg-white border-2 border-emerald-500 text-emerald-600 rounded-xl font-bold text-sm">💵 Receber ${valorFmt}</button>`;
+            }
+
+            if (contexto === "Fila") {
+                acoes += `<button onclick="abrirModalConcluir(${cliente.id})" class="px-5 py-2.5 bg-secundaria text-white rounded-xl font-bold text-sm">✅ Concluir Serviço</button>`;
+                acoes += `<button onclick="apagarCliente(${cliente.id})" class="px-4 py-2.5 bg-red-50 text-red-500 rounded-xl font-bold">🗑️</button>`;
+            } else if (contexto === "Histórico" || contexto === "Financeiro") acoes += `<button onclick="apagarCliente(${cliente.id})" class="px-5 py-2.5 bg-white border border-red-200 text-red-500 rounded-xl font-bold text-sm">🗑️ Excluir</button>`;
+            else if (contexto === "Alerta") acoes += `<a href="https://wa.me/55${cliente.telefone.replace(/\D/g, '')}?text=Olá" target="_blank" class="px-6 py-3 bg-[#25D366] text-white rounded-xl font-bold text-sm">💬 Conversar</a>`;
+            acoes += `</div>`;
+
+            let info = "";
+            if(contexto !== "Financeiro" && (cliente.valor || cliente.detalhes)) {
+                info = `<div class="mt-3 text-sm text-slate-500 bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-lg text-left">`;
+                if(cliente.valor && cliente.status_servico === "Concluído" && perfilUsuario === "chefe") info += `<b>Faturamento:</b> ${valorFmt} <br>`;
+                if(cliente.detalhes) info += `<b>Detalhes:</b> ${cliente.detalhes}`;
+                info += `</div>`;
+            } else if(contexto === "Financeiro") {
+                info = `<div class="mt-3 bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-lg flex justify-between items-center w-full max-w-sm"><span class="text-sm font-bold text-slate-500 uppercase tracking-widest">Valor do Serviço:</span><span class="text-xl font-black ${cliente.status_pagamento === "Pago" ? "text-emerald-500" : "text-amber-500"}">${valorFmt}</span></div>`;
+            }
+
+            cartao.innerHTML = `
+                <div class="flex-1 w-full">
+                    <div class="flex flex-col xl:flex-row items-center gap-4 mb-4">
+                        <h4 class="text-2xl font-black text-primaria dark:text-white">${cliente.nome}</h4>
+                        <div>${cliente.status_servico === "Concluído" ? badgePagamento : ""} ${badgeLigar} ${badgeStatus}</div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm font-medium">
+                        <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2">
+                            <span class="text-secundaria text-lg">🔧</span> 
+                            <span class="dark:text-slate-300">${cliente.tipo_servico}</span>
+                        </div>
+                        <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2">
+                            <span class="text-secundaria text-lg">📅</span> 
+                            <span class="dark:text-slate-300">${dataFmt}</span>
+                        </div>
+                        <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2 col-span-1 md:col-span-2">
+                            <span class="text-secundaria text-lg">📱</span> 
+                            <span class="dark:text-slate-300">${cliente.telefone} &nbsp;|&nbsp; 📍 ${cliente.endereco}</span>
+                        </div>
+                    </div>
+                    ${info}
+                </div>
+                ${acoes}
+            `;
+            return cartao;
+        }
+
+        // === FUNÇÃO NOVA: FILTRO FINANCEIRO RÁPIDO NO NAVEGADOR ===
+        function aplicarFiltroFinanceiro() {
+            if (localStorage.getItem("perfil_gerezin") !== "chefe") return;
+
+            const anoSelecionado = document.getElementById("filtro-ano").value;
+            const mesSelecionado = document.getElementById("filtro-mes").value;
+            const divFinanceiro = document.getElementById("lista-financeiro");
+            divFinanceiro.innerHTML = ""; 
+
+            let totalRecebido = 0;
+            let totalPendente = 0;
+
+            listaDeClientesAtuais.forEach(cliente => {
+                const valorLimpo = parseFloat((cliente.valor || "").replace("R$", "").replace(/\./g, "").replace(",", "."));
+                
+                // Só calcula quem já tem valor cobrado
+                if (valorLimpo > 0) {
+                    // A data vem do banco como "YYYY-MM-DD"
+                    const anoCliente = cliente.data_servico.substring(0, 4);
+                    const mesCliente = cliente.data_servico.substring(5, 7);
+
+                    let passaFiltroAno = (anoSelecionado === "todos") || (anoCliente === anoSelecionado);
+                    let passaFiltroMes = (mesSelecionado === "todos") || (mesCliente === mesSelecionado);
+
+                    // Se passou pelo filtro escolhido, entra na conta e aparece na tela!
+                    if (passaFiltroAno && passaFiltroMes) {
+                        if (cliente.status_pagamento === "Pago") {
+                            totalRecebido += valorLimpo;
+                        } else {
+                            totalPendente += valorLimpo;
+                        }
+                        
+                        divFinanceiro.appendChild(criarCartao(cliente, "Financeiro"));
+                    }
+                }
+            });
+
+            // Atualiza os números grandes
+            document.getElementById("metrica-recebido").innerText = formatadorFinanceiro.format(totalRecebido);
+            document.getElementById("metrica-pendente").innerText = formatadorFinanceiro.format(totalPendente);
+            
+            // Atualiza o gráfico de rosca
+            if (graficoFinancas) { graficoFinancas.destroy(); } 
+            const ctx = document.getElementById('grafico-financas').getContext('2d');
+            graficoFinancas = new Chart(ctx, {
+                type: 'doughnut', data: { labels: ['💰 Recebido', '⏳ Pendente'], datasets: [{ data: [totalRecebido, totalPendente], backgroundColor: ['#10b981', '#f59e0b'], borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#64748b', font: { weight: 'bold' } } } } }
+            });
+        }
+
+        // === CARREGAMENTO GERAL (Aba Histórico, Fila e Alertas) ===
         function carregarClientes() {
             fetch("/clientes", { headers: cabecalhoSeguro() })
                 .then(resposta => {
@@ -512,21 +641,15 @@
                 })
                 .then(dados => {
                     listaDeClientesAtuais = dados; 
-                    const perfilUsuario = localStorage.getItem("perfil_gerezin"); // Descobre o cargo de quem tá usando
-
-                    // Pega as "caixas vazias" onde os clientes vão entrar
+                    
                     const divPendentes = document.getElementById("lista-pendentes");
                     const divConcluidos = document.getElementById("lista-concluidos");
                     const divAlertas = document.getElementById("lista-alertas");
-                    const divFinanceiro = document.getElementById("lista-financeiro");
                     
-                    divPendentes.innerHTML = ""; divConcluidos.innerHTML = ""; divAlertas.innerHTML = ""; divFinanceiro.innerHTML = "";
+                    divPendentes.innerHTML = ""; divConcluidos.innerHTML = ""; divAlertas.innerHTML = ""; 
 
-                    // Separa quem está na fila e quem tem dinheiro envolvido
                     const pendentes = dados.filter(c => c.status_servico === "Agendado");
-                    const financas = dados.filter(c => parseFloat(c.valor) > 0);
 
-                    // Lógica do Robô: Acha os clientes de Ar Condicionado que fizeram serviço há mais de 1 ano
                     const dataDeHoje = new Date();
                     const umAnoEmMS = 1000 * 60 * 60 * 24 * 365;
                     let listaDeAlertas = [];
@@ -537,7 +660,6 @@
                         if ((dataDeHoje - dataServico) > umAnoEmMS && ehAr) listaDeAlertas.push(cliente);
                     });
 
-                    // Coloca as bolinhas coloridas dos clientes no Calendário
                     if(calendarioApp) {
                         calendarioApp.removeAllEvents(); 
                         dados.forEach(cliente => {
@@ -548,115 +670,20 @@
                         });
                     }
 
-                    // Faz a matemática do módulo Financeiro
-                    let totalRecebido = 0; let totalPendente = 0;
-                    financas.forEach(cliente => {
-                        const valor = parseFloat(cliente.valor);
-                        if(cliente.status_pagamento === "Pago") totalRecebido += valor; else totalPendente += valor;
-                    });
-
-                    // Atualiza os números grandes no Dashboard
                     document.getElementById("metrica-fila").innerText = pendentes.length;
                     document.getElementById("metrica-concluidos").innerText = dados.filter(c => c.status_servico === "Concluído").length;
                     document.getElementById("metrica-alertas").innerText = listaDeAlertas.length;
-                    document.getElementById("metrica-recebido").innerText = formatadorFinanceiro.format(totalRecebido);
-                    document.getElementById("metrica-pendente").innerText = formatadorFinanceiro.format(totalPendente);
 
-                    // Pinta o Gráfico do tipo "Rosquinha" no financeiro
-                    if (graficoFinancas) { graficoFinancas.destroy(); } 
-                    const ctx = document.getElementById('grafico-financas').getContext('2d');
-                    graficoFinancas = new Chart(ctx, {
-                        type: 'doughnut', data: { labels: ['💰 Recebido', '⏳ Pendente'], datasets: [{ data: [totalRecebido, totalPendente], backgroundColor: ['#10b981', '#f59e0b'], borderWidth: 0 }] },
-                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#64748b', font: { weight: 'bold' } } } } }
-                    });
-
-                    // Criação Visual: Desenha a caixa (cartão) com os dados de um cliente
-                    function criarCartao(cliente, contexto) {
-                        const cartao = document.createElement("div");
-                        const dataFmt = cliente.data_servico.split('-').reverse().join('/');
-                        const valorFmt = formatadorFinanceiro.format(parseFloat(cliente.valor) || 0);
-                        
-                        const badgePagamento = cliente.status_pagamento === "Pago" ? `<span class="px-3 py-1 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 rounded-full text-xs font-bold shadow-sm">💰 PAGO</span>` : `<span class="px-3 py-1 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-full text-xs font-bold shadow-sm">⏳ PENDENTE</span>`;
-                        const badgeLigar = cliente.ligar_mais_tarde && contexto !== "Financeiro" ? `<span class="px-3 py-1 bg-orange-500/10 text-orange-600 border border-orange-500/20 rounded-full text-xs font-bold ml-2">📞 LIGAR DEPOIS</span>` : ``;
-                        const badgeStatus = contexto === "Histórico" && cliente.status_servico === "Concluído" ? `<span class="px-3 py-1 bg-sky-500/10 text-sky-600 border border-sky-500/20 rounded-full text-xs font-bold ml-2">✅ CONCLUÍDO</span>` : (contexto === "Histórico" ? `<span class="px-3 py-1 bg-slate-500/10 text-slate-600 border border-slate-500/20 rounded-full text-xs font-bold ml-2">📝 FILA</span>` : ``);
-
-                        let classesBase = "bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 flex flex-col xl:flex-row justify-between items-center text-center xl:text-left gap-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 ";
-                        
-                        // Muda a cor da borda do cartão dependendo da aba
-                        if (contexto === "Fila" || (contexto === "Histórico" && cliente.status_servico === "Agendado")) cartao.className = classesBase + "border-l-4 border-secundaria";
-                        else if (contexto === "Alerta") cartao.className = classesBase + "border-l-4 border-orange-500 bg-orange-50/50";
-                        else if (contexto === "Financeiro") cartao.className = classesBase + (cliente.status_pagamento === "Pago" ? "border-l-4 border-emerald-500" : "border-l-4 border-amber-500");
-                        else cartao.className = classesBase;
-
-                        let acoes = `<div class="flex flex-wrap gap-3 w-full xl:w-auto mt-4 xl:mt-0 justify-center xl:justify-end">`;
-                        
-                        if (cliente.status_servico === "Concluído" && (contexto === "Histórico" || contexto === "Financeiro")) {
-                            acoes += `<button onclick="baixarRecibo(${cliente.id}, this)" class="px-5 py-2.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border border-emerald-200 dark:border-emerald-900 rounded-xl font-bold text-sm shadow-sm transition-all hover:bg-emerald-500 hover:text-white">📄 Recibo</button>`;
-                        }
-
-                        if (contexto === "Fila" || contexto === "Histórico") acoes += `<button onclick="prepararEdicao(${cliente.id})" class="px-5 py-2.5 bg-white dark:bg-slate-900 border border-blue-200 text-blue-500 rounded-xl font-bold text-sm shadow-sm">✏️ Editar</button>`;
-                        
-                        // Só mostra o botão de dar baixa no pagamento direto no cartão se for o chefe acessando
-                        if (cliente.status_pagamento === "Pendente" && cliente.status_servico === "Concluído" && contexto !== "Alerta" && perfilUsuario === "chefe") {
-                            acoes += `<button onclick="pagarServico(${cliente.id})" class="px-5 py-2.5 bg-white border-2 border-emerald-500 text-emerald-600 rounded-xl font-bold text-sm">💵 Receber ${valorFmt}</button>`;
-                        }
-
-                        // Coloca os botões certos dependendo se está na Fila, no Histórico ou no Alerta
-                        if (contexto === "Fila") {
-                            acoes += `<button onclick="abrirModalConcluir(${cliente.id})" class="px-5 py-2.5 bg-secundaria text-white rounded-xl font-bold text-sm">✅ Concluir Serviço</button>`;
-                            acoes += `<button onclick="apagarCliente(${cliente.id})" class="px-4 py-2.5 bg-red-50 text-red-500 rounded-xl font-bold">🗑️</button>`;
-                        } else if (contexto === "Histórico" || contexto === "Financeiro") acoes += `<button onclick="apagarCliente(${cliente.id})" class="px-5 py-2.5 bg-white border border-red-200 text-red-500 rounded-xl font-bold text-sm">🗑️ Excluir</button>`;
-                        else if (contexto === "Alerta") acoes += `<a href="https://wa.me/55${cliente.telefone.replace(/\D/g, '')}?text=Olá" target="_blank" class="px-6 py-3 bg-[#25D366] text-white rounded-xl font-bold text-sm">💬 Conversar</a>`;
-                        acoes += `</div>`;
-
-                        let info = "";
-                        if(contexto !== "Financeiro" && (cliente.valor || cliente.detalhes)) {
-                            info = `<div class="mt-3 text-sm text-slate-500 bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-lg text-left">`;
-                            // Só mostra o dinheiro no meio do histórico se quem está acessando for o chefe
-                            if(cliente.valor && cliente.status_servico === "Concluído" && perfilUsuario === "chefe") info += `<b>Faturamento:</b> ${valorFmt} <br>`;
-                            if(cliente.detalhes) info += `<b>Detalhes:</b> ${cliente.detalhes}`;
-                            info += `</div>`;
-                        } else if(contexto === "Financeiro") {
-                            info = `<div class="mt-3 bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-lg flex justify-between items-center w-full max-w-sm"><span class="text-sm font-bold text-slate-500 uppercase tracking-widest">Valor do Serviço:</span><span class="text-xl font-black ${cliente.status_pagamento === "Pago" ? "text-emerald-500" : "text-amber-500"}">${valorFmt}</span></div>`;
-                        }
-
-                        cartao.innerHTML = `
-                            <div class="flex-1 w-full">
-                                <div class="flex flex-col xl:flex-row items-center gap-4 mb-4">
-                                    <h4 class="text-2xl font-black text-primaria dark:text-white">${cliente.nome}</h4>
-                                    <div>${cliente.status_servico === "Concluído" ? badgePagamento : ""} ${badgeLigar} ${badgeStatus}</div>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm font-medium">
-                                    <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2">
-                                        <span class="text-secundaria text-lg">🔧</span> 
-                                        <span class="dark:text-slate-300">${cliente.tipo_servico}</span>
-                                    </div>
-                                    <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2">
-                                        <span class="text-secundaria text-lg">📅</span> 
-                                        <span class="dark:text-slate-300">${dataFmt}</span>
-                                    </div>
-                                    <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2 col-span-1 md:col-span-2">
-                                        <span class="text-secundaria text-lg">📱</span> 
-                                        <span class="dark:text-slate-300">${cliente.telefone} &nbsp;|&nbsp; 📍 ${cliente.endereco}</span>
-                                    </div>
-                                </div>
-                                ${info}
-                            </div>
-                            ${acoes}
-                        `;
-                        return cartao;
-                    }
-
-                    // Prega os cartões criados nas abas corretas da tela
                     pendentes.forEach(c => divPendentes.appendChild(criarCartao(c, "Fila")));
                     dados.forEach(c => divConcluidos.appendChild(criarCartao(c, "Histórico")));
                     listaDeAlertas.forEach(c => divAlertas.appendChild(criarCartao(c, "Alerta")));
-                    financas.forEach(c => divFinanceiro.appendChild(criarCartao(c, "Financeiro")));
+                    
+                    // Dispara a matemática financeira logo depois de carregar tudo
+                    aplicarFiltroFinanceiro();
                 })
                 .catch(() => {});
         }
 
-        // Pega as coisas digitadas no formulário e envia pro Python (Salva ou Atualiza)
         function salvarCliente() {
             const pacote = {
                 nome: document.getElementById("input-nome").value, telefone: document.getElementById("input-telefone").value,
@@ -665,7 +692,6 @@
                 status_pagamento: document.getElementById("input-status-pagamento").value, ligar_mais_tarde: document.getElementById("input-ligar").checked,
                 detalhes: document.getElementById("input-detalhes").value, valor: document.getElementById("input-valor").value
             };
-            // Se for pra editar manda num endereço, se for novo manda no outro
             const url = clienteSendoEditadoId ? `/clientes/${clienteSendoEditadoId}` : "/clientes";
             
             fetch(url, { method: clienteSendoEditadoId ? "PUT" : "POST", headers: cabecalhoSeguro(), body: JSON.stringify(pacote) })
@@ -677,18 +703,24 @@
             });
         }
 
-        // Dá baixa de pagamento direto no cartão do cliente
-        function pagarServico(id) { fetch("/clientes/" + id + "/pagar", { method: "PUT", headers: cabecalhoSeguro() }).then(r => { if(r.status === 401) return fazerLogout(); carregarClientes(); }); }
+        function pagarServico(id) { 
+            fetch("/clientes/" + id + "/pagar", { method: "PUT", headers: cabecalhoSeguro() })
+            .then(r => { 
+                if(r.status === 401) return fazerLogout(); 
+                carregarClientes(); 
+            }); 
+        }
         
-        // Exclui do banco de dados (o Python pede a chave de acesso antes)
         function apagarCliente(id) { 
             if (confirm("⚠️ Excluir permanentemente?")) {
                 fetch("/clientes/" + id, { method: "DELETE", headers: cabecalhoSeguro() })
-                .then(r => { if(r.status === 401) return fazerLogout(); carregarClientes(); }); 
+                .then(r => { 
+                    if(r.status === 401) return fazerLogout(); 
+                    carregarClientes(); 
+                }); 
             }
         }
 
-        // Pede para o Python desenhar o PDF e faz o download pra pasta do usuário
         function baixarRecibo(id, botaoClicado = null) {
             const btn = botaoClicado || document.getElementById('btn-modal-recibo');
             const textoOriginal = btn.innerText; 
@@ -712,7 +744,6 @@
             })
             .catch(() => { btn.innerText = "❌ Erro"; setTimeout(() => btn.innerText = textoOriginal, 2000); });
         }
-
     </script>
 </body>
 </html>
