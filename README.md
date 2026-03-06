@@ -1,65 +1,65 @@
-# ❄️ CRM Web Gerezin (SaaS)
+# ❄️ Gerezin CRM & Gestão Financeira
 
-![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+Um sistema completo de Gestão de Relacionamento com o Cliente (CRM) e Controle Financeiro, desenvolvido sob medida para a empresa **T.J.L Refrigeração LTDA (Gerezin)**. 
 
-Um sistema de gestão completo (Software as a Service) desenvolvido sob medida para otimizar a operação e o fluxo financeiro de uma empresa de climatização e manutenção de ar condicionado. 
+Este projeto foi construído para modernizar o controle de agendamentos, automatizar a geração de recibos e proteger os dados sensíveis da empresa através de um sistema robusto de controle de acesso.
 
-O objetivo deste projeto é centralizar as informações da operação, oferecendo desde o controle de agenda até a emissão de recibos profissionais, tudo rodando em nuvem com alta segurança.
+## 🚀 Principais Funcionalidades
 
----
+* **Gestão Operacional:** Cadastro, edição e exclusão rápida de clientes e Ordens de Serviço.
+* **Controle de Acesso por Perfis:** * **Perfil Chefe/Gerência:** Acesso total, incluindo o financeiro, faturamento e recebimentos diretos.
+  * **Perfil Operador/Loja:** Acesso focado na fila de trabalho e histórico, com bloqueio automático à visão do dinheiro e faturamento.
+* **Gerador de Recibos (PDF):** Criação automática de recibos profissionais personalizados, prontos para impressão ou envio no WhatsApp.
+* **Dashboard Financeiro:** Gráficos visuais de fluxo de caixa e exportação de relatórios completos para o Excel (`.xlsx`).
+* **Agenda Interativa:** Calendário para visualização clara de todos os serviços programados do mês.
+* **Robô de Retenção:** Avisos automáticos mostrando quais clientes precisam de manutenção preventiva (1 ano após o último serviço de Ar Condicionado).
 
-## ✨ Funcionalidades
+## 🛠️ Ferramentas Utilizadas
 
-* **📊 Dashboard de Operações:** Painel com gráficos (*Chart.js*) e indicadores em tempo real de serviços pendentes, concluídos e faturamento.
-* **🗓️ Agenda Inteligente:** Calendário interativo (*FullCalendar*) que previne conflitos de horários e separa serviços por cores de status.
-* **💰 Módulo Financeiro e Relatórios:** Controle de valores e inadimplência, com exportação instantânea do banco de dados para Excel (`.xlsx`) via *SheetJS*.
-* **📄 Emissão de Recibos em PDF:** Geração automática de recibos profissionais no backend (usando `fpdf2`), já formatados com dados do cliente, valor, CNPJ e identidade visual da empresa.
-* **🤖 Robô de Retenção (Pós-venda):** Algoritmo que rastreia clientes com mais de 1 ano sem manutenção e gera um link de WhatsApp com abordagem pré-pronta.
+* **Python & FastAPI:** O "motor" principal do sistema, rápido e moderno.
+* **PostgreSQL (Supabase):** Banco de dados seguro e hospedado na nuvem.
+* **HTML, Javascript & Tailwind CSS:** A "lataria e pintura" do sistema, com visual moderno e Modo Escuro (Dark Mode).
+* **Render & Docker:** Onde o sistema fica hospedado funcionando 24 horas por dia na internet.
 
----
+## 📂 Organização das Pastas
 
-## 🛡️ Arquitetura, Segurança e Nuvem
-
-O sistema foi arquitetado utilizando os principais padrões da indústria para escalabilidade e segurança:
-
-* **Banco de Dados em Nuvem:** Migração completa para **PostgreSQL (via Supabase)**, garantindo integridade e disponibilidade dos dados 24/7.
-* **Conteinerização:** Aplicação empacotada com **Docker** (`Dockerfile`), garantindo que o sistema rode de forma idêntica em qualquer ambiente ou servidor.
-* **Autenticação JWT (JSON Web Tokens):** Geração de tokens com tempo de expiração para blindar as rotas da API RESTful.
-* **Criptografia Bcrypt:** Senhas "trituradas" e protegidas nativamente.
-* **Isolamento de Variáveis (.env):** Chaves secretas e credenciais de banco mantidas estritamente fora do controle de versão.
-
----
-
-## 🚀 Como rodar o projeto localmente
-
-Siga os passos abaixo no seu terminal para baixar e iniciar o sistema:
-
-```bash
-# 1. Clone o repositório
-git clone https://github.com/SEU-USUARIO/CRM-Web-Gerezin-SaaS.git
-
-# 2. Entre na pasta
-cd CRM-Web-Gerezin-SaaS
-
-# 3. Crie um arquivo .env na raiz do projeto e insira suas credenciais:
-# SECRET_KEY=sua_chave_aleatoria
-# ADMIN_USERNAME=admin
-# ADMIN_PASSWORD=sua_senha_forte
-# DATABASE_URL=postgresql://usuario:senha@host:5432/postgres
-
-# 4. Instale as dependências do servidor
-pip install -r requirements.txt
-
-# 5. Inicie o motor FastAPI
-uvicorn main:app --reload
+```text
+Gerezin_CRM/
+├── frontend/             # A tela que o usuário vê (HTML e imagens)
+│   ├── index.html
+│   ├── logo_gerezin.png
+│   └── favicon.png
+├── main.py               # O motor principal em Python
+├── requirements.txt      # A lista de ferramentas instaladas
+├── Dockerfile            # A receita para ligar o servidor na nuvem
+└── README.md             # Este manual que você está lendo
 ```
 
-**Passo Final:** Com o servidor rodando, abra o arquivo `index.html` diretamente no seu navegador. O sistema solicitará as credenciais definidas no arquivo `.env` para liberar o acesso corporativo.
+## 💻 Como rodar no seu próprio computador
+
+Para rodar este projeto no seu PC para fazer testes, siga os passos abaixo:
+
+1. **Baixe o código para o seu computador:**
+   ```bash
+   git clone https://github.com/JoaoPrissao/CRM-Web-Gerezin-SaaS-.git(https://github.com/SEU_NOME_DE_USUARIO_AQUI/NOME_DO_REPOSITORIO.git)
+   cd NOME_DO_REPOSITORIO
+   ```
+
+2. **Ligue a sua caixa de ferramentas virtual e instale as dependências:**
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. **Configure as suas senhas secretas:**
+   Crie um arquivo chamado `.env` na pasta principal do projeto e coloque as suas senhas de login e o link do seu banco de dados lá dentro.
+
+4. **Ligue o motor do sistema:**
+   ```bash
+   uvicorn main:app --reload
+   ```
+   Agora é só abrir o seu navegador de internet e acessar: `http://localhost:8000`
 
 ---
-
-💼 *Desenvolvido por **João Vitor Prissão Oliveira*** *Estudante de Engenharia da Computação na UTFPR - Apucarana.*
+*Projeto desenvolvido por João Vitor Prissão Oliveira, buscando aplicar os conceitos práticos da Engenharia de Computação para modernizar a prestação de serviços reais.*

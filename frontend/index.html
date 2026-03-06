@@ -43,6 +43,7 @@
         }
     </script>
     <style>
+        /* Ajustes visuais da barra de rolagem e do calendário */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -107,6 +108,7 @@
                     <button class="menu-btn text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800 px-4 py-2 rounded-xl transition-all font-medium" onclick="mudarAba('calendario', this)">🗓️ Agenda</button>
                     <button class="menu-btn text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800 px-4 py-2 rounded-xl transition-all font-medium" onclick="mudarAba('historico', this)">🗃️ Histórico</button>
                     <button class="menu-btn text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800 px-4 py-2 rounded-xl transition-all font-medium" onclick="mudarAba('alertas', this)">🤖 Robô</button>
+                    
                     <button id="btn-aba-financeiro" class="menu-btn text-slate-600 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-800 px-4 py-2 rounded-xl transition-all font-bold text-emerald-600 dark:text-emerald-400 border border-transparent hover:border-emerald-200 dark:hover:border-emerald-800" onclick="mudarAba('financeiro', this)">💰 Financeiro</button>
                     
                     <button onclick="alternarTema()" class="ml-2 p-2.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-yellow-400 hover:scale-110 transition-transform shadow-inner" title="Alternar Tema">
@@ -122,6 +124,7 @@
         </header>
 
         <main class="flex-1 overflow-y-auto p-6 md:p-10 relative z-10">
+            
             <section id="hub" class="aba block max-w-6xl mx-auto animar-entrada">
                 <div class="text-center mb-12">
                     <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-primaria via-secundaria to-destaque dark:from-white dark:via-sky-300 dark:to-destaque">Controle Operacional</h1>
@@ -267,25 +270,30 @@
     </div>
 
     <script>
+        // === VARIÁVEIS GLOBAIS ===
         let listaDeClientesAtuais = [];
         let clienteSendoEditadoId = null; 
         let idParaConcluir = null;
         let graficoFinancas = null;
         let calendarioApp = null;
 
+        // Ferramenta para formatar os valores em Reais (R$)
         const formatadorFinanceiro = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        // ==== SEGURANÇA E CRACHÁ ====
+        // === AUTENTICAÇÃO E SEGURANÇA ===
+        
+        // Verifica se quem abriu a tela já fez login antes
         function checarAcesso() {
             const cracha = localStorage.getItem("token_gerezin");
-            const perfil = localStorage.getItem("perfil_gerezin"); // NOVO: Lê qual é o cargo da pessoa
+            const perfil = localStorage.getItem("perfil_gerezin"); // Lê qual é o cargo da pessoa
             
             if (cracha) {
+                // Se tiver logado, esconde a tela de login e mostra o sistema
                 document.getElementById("tela-login").classList.add("hidden");
                 document.getElementById("sistema-principal").classList.remove("hidden");
                 document.getElementById("sistema-principal").classList.add("flex");
                 
-                // NOVO: Esconde a aba do financeiro se for o login da loja
+                // Esconde a aba do financeiro se for o login de operador (loja)
                 if (perfil === "chefe") {
                     document.getElementById("btn-aba-financeiro").classList.remove("hidden");
                 } else {
@@ -294,12 +302,14 @@
 
                 carregarClientes(); 
             } else {
+                // Se não tiver logado, tranca tudo e mostra só o login
                 document.getElementById("tela-login").classList.remove("hidden");
                 document.getElementById("sistema-principal").classList.add("hidden");
                 document.getElementById("sistema-principal").classList.remove("flex");
             }
         }
 
+        // Pega o usuário e senha digitados e envia para o Python validar
         function fazerLogin(evento) {
             evento.preventDefault();
             const usuario = document.getElementById("login-user").value;
@@ -307,7 +317,7 @@
 
             const pacoteLogin = new URLSearchParams();
             pacoteLogin.append("username", usuario);
-            pacoteLogin.append("password", senha);
+            pacoteLogin.append("password", senha); // <-- O zero intruso estava escondido aqui!
 
             fetch("/login", { method: "POST", body: pacoteLogin })
             .then(resposta => {
@@ -315,19 +325,28 @@
                 return resposta.json();
             })
             .then(dados => {
+                // Salva a chave e o cargo no navegador para não precisar logar de novo
                 localStorage.setItem("token_gerezin", dados.access_token);
-                localStorage.setItem("perfil_gerezin", dados.perfil); // Salva o cargo
+                localStorage.setItem("perfil_gerezin", dados.perfil); 
                 document.getElementById("msg-erro-login").classList.add("hidden");
                 checarAcesso();
             })
             .catch(() => { document.getElementById("msg-erro-login").classList.remove("hidden"); });
         }
 
+        // Apaga a chave salva no navegador e volta pra tela de login
         function fazerLogout() { localStorage.removeItem("token_gerezin"); localStorage.removeItem("perfil_gerezin"); checarAcesso(); }
+        
+        // Envia a chave salva junto com os pedidos para o Python saber que estamos logados
         function cabecalhoSeguro() { return { "Content-Type": "application/json", "Authorization": "Bearer " + localStorage.getItem("token_gerezin") }; }
 
+        // Liga ou desliga o modo noturno (tela escura)
         function alternarTema() { document.documentElement.classList.toggle('dark'); }
 
+
+        // === CONTROLE DA TELA E NAVEGAÇÃO ===
+
+        // Troca o conteúdo do meio da tela dependendo de qual botão do menu foi clicado
         function mudarAba(idAba, botaoClicado) {
             document.querySelectorAll('.aba').forEach(aba => { aba.classList.remove('block', 'animar-entrada'); aba.classList.add('hidden'); });
             document.querySelectorAll('.menu-btn').forEach(btn => { btn.classList.remove('bg-secundaria', 'text-white', 'shadow-lg', 'shadow-secundaria/30'); btn.classList.add('text-slate-600', 'dark:text-slate-300'); });
@@ -343,6 +362,10 @@
             if (idAba === 'calendario' && calendarioApp) { setTimeout(() => { calendarioApp.render(); }, 100); }
         }
 
+
+        // === LÓGICA DE MODAIS E FORMULÁRIOS ===
+
+        // Pega as informações do cliente clicado e desenha elas no modal de Detalhes
         function abrirModalDetalhes(id) {
             const cliente = listaDeClientesAtuais.find(c => c.id === parseInt(id));
             if (!cliente) return;
@@ -368,8 +391,10 @@
             document.getElementById('modal-detalhes').classList.remove('hidden');
         }
 
+        // Esconde o modal de detalhes
         function fecharModalDetalhes() { document.getElementById('modal-detalhes').classList.add('hidden'); }
 
+        // Configura e liga o calendário na tela
         function iniciarCalendario() {
             const espacoCalendario = document.getElementById('div-calendario-visual');
             calendarioApp = new FullCalendar.Calendar(espacoCalendario, {
@@ -382,8 +407,10 @@
             calendarioApp.render();
         }
 
+        // Assim que a tela carrega inteira, liga o calendário e tenta fazer o login automático
         document.addEventListener('DOMContentLoaded', function() { iniciarCalendario(); checarAcesso(); });
 
+        // Mostra o campo "Valor" apenas se o serviço for marcado como "Concluído"
         function verificarStatus() {
             const status = document.getElementById("input-status-servico").value;
             const divValor = document.getElementById("div-valor");
@@ -391,6 +418,7 @@
             else { divValor.classList.add("hidden"); if(!clienteSendoEditadoId) document.getElementById("input-valor").value = ""; }
         }
 
+        // Limpa todos os campos para preparar a tela para um cadastro totalmente novo
         function prepararNovo() {
             clienteSendoEditadoId = null;
             document.querySelectorAll('input[type="text"], input[type="date"], input[type="number"], textarea').forEach(i => i.value = '');
@@ -403,6 +431,7 @@
             document.getElementById("btn-salvar-form").innerText = "💾 Lançar no Sistema";
         }
 
+        // Puxa os dados de um cliente existente e joga nos inputs para poder editar
         function prepararEdicao(id) {
             const cliente = listaDeClientesAtuais.find(c => c.id === id);
             if(!cliente) return;
@@ -424,6 +453,7 @@
             mudarAba('novo', document.getElementById('btn-menu-novo'));
         }
 
+        // Avisa se o número de telefone que está sendo digitado já existe no banco
         document.getElementById("input-telefone").addEventListener("input", function(e) {
             if(clienteSendoEditadoId) return;
             const tel = e.target.value.trim();
@@ -432,6 +462,7 @@
             else document.getElementById("alerta-duplicado").classList.add("hidden");
         });
 
+        // Filtra os cartões da aba histórico conforme o usuário digita
         function pesquisarHistorico() {
             const termo = document.getElementById("input-pesquisa").value.toLowerCase();
             const cartoes = document.getElementById("lista-concluidos").children;
@@ -441,9 +472,14 @@
             }
         }
 
+        // Controle de abrir/fechar o modal de concluir serviço da Fila
         function abrirModalConcluir(id) { idParaConcluir = id; document.getElementById("modal-concluir").classList.remove("hidden"); }
         function fecharModalConcluir() { idParaConcluir = null; document.getElementById("modal-concluir").classList.add("hidden"); document.getElementById("input-modal-valor").value = ""; document.getElementById("input-modal-pago").value = "Pago"; }
 
+
+        // === COMUNICAÇÃO COM O SERVIDOR (PYTHON) E BANCO DE DADOS ===
+
+        // Pega o valor digitado no Modal e avisa o Python para encerrar o serviço
         function confirmarConclusao() {
             const valor = document.getElementById("input-modal-valor").value;
             const statusPgto = document.getElementById("input-modal-pago").value;
@@ -457,6 +493,7 @@
             });
         }
 
+        // Cria a planilha do Excel usando os dados atuais da tela
         function exportarExcel() {
             if (listaDeClientesAtuais.length === 0) { alert("Não há dados para exportar."); return; }
             const dadosPlanilha = listaDeClientesAtuais.map(cliente => ({ "ID": cliente.id, "Cliente / Loja": cliente.nome, "Telefone": cliente.telefone, "Endereço": cliente.endereco, "Tipo de Serviço": cliente.tipo_servico, "Data": cliente.data_servico.split('-').reverse().join('/'), "Situação": cliente.status_servico, "Pagamento": cliente.status_pagamento, "Valor (R$)": parseFloat(cliente.valor) || 0, "Ligar Depois?": cliente.ligar_mais_tarde ? "Sim" : "Não", "Obs": cliente.detalhes || "" }));
@@ -466,6 +503,7 @@
             XLSX.writeFile(arquivoExcel, "Relatorio_Financeiro_Gerezin.xlsx");
         }
 
+        // A FUNÇÃO PRINCIPAL: Puxa todos os dados do Python e desenha nas abas
         function carregarClientes() {
             fetch("/clientes", { headers: cabecalhoSeguro() })
                 .then(resposta => {
@@ -476,6 +514,7 @@
                     listaDeClientesAtuais = dados; 
                     const perfilUsuario = localStorage.getItem("perfil_gerezin"); // Descobre o cargo de quem tá usando
 
+                    // Pega as "caixas vazias" onde os clientes vão entrar
                     const divPendentes = document.getElementById("lista-pendentes");
                     const divConcluidos = document.getElementById("lista-concluidos");
                     const divAlertas = document.getElementById("lista-alertas");
@@ -483,9 +522,11 @@
                     
                     divPendentes.innerHTML = ""; divConcluidos.innerHTML = ""; divAlertas.innerHTML = ""; divFinanceiro.innerHTML = "";
 
+                    // Separa quem está na fila e quem tem dinheiro envolvido
                     const pendentes = dados.filter(c => c.status_servico === "Agendado");
                     const financas = dados.filter(c => parseFloat(c.valor) > 0);
 
+                    // Lógica do Robô: Acha os clientes de Ar Condicionado que fizeram serviço há mais de 1 ano
                     const dataDeHoje = new Date();
                     const umAnoEmMS = 1000 * 60 * 60 * 24 * 365;
                     let listaDeAlertas = [];
@@ -496,6 +537,7 @@
                         if ((dataDeHoje - dataServico) > umAnoEmMS && ehAr) listaDeAlertas.push(cliente);
                     });
 
+                    // Coloca as bolinhas coloridas dos clientes no Calendário
                     if(calendarioApp) {
                         calendarioApp.removeAllEvents(); 
                         dados.forEach(cliente => {
@@ -506,18 +548,21 @@
                         });
                     }
 
+                    // Faz a matemática do módulo Financeiro
                     let totalRecebido = 0; let totalPendente = 0;
                     financas.forEach(cliente => {
                         const valor = parseFloat(cliente.valor);
                         if(cliente.status_pagamento === "Pago") totalRecebido += valor; else totalPendente += valor;
                     });
 
+                    // Atualiza os números grandes no Dashboard
                     document.getElementById("metrica-fila").innerText = pendentes.length;
                     document.getElementById("metrica-concluidos").innerText = dados.filter(c => c.status_servico === "Concluído").length;
                     document.getElementById("metrica-alertas").innerText = listaDeAlertas.length;
                     document.getElementById("metrica-recebido").innerText = formatadorFinanceiro.format(totalRecebido);
                     document.getElementById("metrica-pendente").innerText = formatadorFinanceiro.format(totalPendente);
 
+                    // Pinta o Gráfico do tipo "Rosquinha" no financeiro
                     if (graficoFinancas) { graficoFinancas.destroy(); } 
                     const ctx = document.getElementById('grafico-financas').getContext('2d');
                     graficoFinancas = new Chart(ctx, {
@@ -525,6 +570,7 @@
                         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#64748b', font: { weight: 'bold' } } } } }
                     });
 
+                    // Criação Visual: Desenha a caixa (cartão) com os dados de um cliente
                     function criarCartao(cliente, contexto) {
                         const cartao = document.createElement("div");
                         const dataFmt = cliente.data_servico.split('-').reverse().join('/');
@@ -535,6 +581,8 @@
                         const badgeStatus = contexto === "Histórico" && cliente.status_servico === "Concluído" ? `<span class="px-3 py-1 bg-sky-500/10 text-sky-600 border border-sky-500/20 rounded-full text-xs font-bold ml-2">✅ CONCLUÍDO</span>` : (contexto === "Histórico" ? `<span class="px-3 py-1 bg-slate-500/10 text-slate-600 border border-slate-500/20 rounded-full text-xs font-bold ml-2">📝 FILA</span>` : ``);
 
                         let classesBase = "bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 flex flex-col xl:flex-row justify-between items-center text-center xl:text-left gap-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 ";
+                        
+                        // Muda a cor da borda do cartão dependendo da aba
                         if (contexto === "Fila" || (contexto === "Histórico" && cliente.status_servico === "Agendado")) cartao.className = classesBase + "border-l-4 border-secundaria";
                         else if (contexto === "Alerta") cartao.className = classesBase + "border-l-4 border-orange-500 bg-orange-50/50";
                         else if (contexto === "Financeiro") cartao.className = classesBase + (cliente.status_pagamento === "Pago" ? "border-l-4 border-emerald-500" : "border-l-4 border-amber-500");
@@ -548,11 +596,12 @@
 
                         if (contexto === "Fila" || contexto === "Histórico") acoes += `<button onclick="prepararEdicao(${cliente.id})" class="px-5 py-2.5 bg-white dark:bg-slate-900 border border-blue-200 text-blue-500 rounded-xl font-bold text-sm shadow-sm">✏️ Editar</button>`;
                         
-                        // NOVO: Só o chefe vê o botão de Receber dinheiro direto no cartão
+                        // Só mostra o botão de dar baixa no pagamento direto no cartão se for o chefe acessando
                         if (cliente.status_pagamento === "Pendente" && cliente.status_servico === "Concluído" && contexto !== "Alerta" && perfilUsuario === "chefe") {
                             acoes += `<button onclick="pagarServico(${cliente.id})" class="px-5 py-2.5 bg-white border-2 border-emerald-500 text-emerald-600 rounded-xl font-bold text-sm">💵 Receber ${valorFmt}</button>`;
                         }
 
+                        // Coloca os botões certos dependendo se está na Fila, no Histórico ou no Alerta
                         if (contexto === "Fila") {
                             acoes += `<button onclick="abrirModalConcluir(${cliente.id})" class="px-5 py-2.5 bg-secundaria text-white rounded-xl font-bold text-sm">✅ Concluir Serviço</button>`;
                             acoes += `<button onclick="apagarCliente(${cliente.id})" class="px-4 py-2.5 bg-red-50 text-red-500 rounded-xl font-bold">🗑️</button>`;
@@ -563,7 +612,7 @@
                         let info = "";
                         if(contexto !== "Financeiro" && (cliente.valor || cliente.detalhes)) {
                             info = `<div class="mt-3 text-sm text-slate-500 bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-lg text-left">`;
-                            // NOVO: Só mostra o faturamento no cartão se for o chefe
+                            // Só mostra o dinheiro no meio do histórico se quem está acessando for o chefe
                             if(cliente.valor && cliente.status_servico === "Concluído" && perfilUsuario === "chefe") info += `<b>Faturamento:</b> ${valorFmt} <br>`;
                             if(cliente.detalhes) info += `<b>Detalhes:</b> ${cliente.detalhes}`;
                             info += `</div>`;
@@ -598,6 +647,7 @@
                         return cartao;
                     }
 
+                    // Prega os cartões criados nas abas corretas da tela
                     pendentes.forEach(c => divPendentes.appendChild(criarCartao(c, "Fila")));
                     dados.forEach(c => divConcluidos.appendChild(criarCartao(c, "Histórico")));
                     listaDeAlertas.forEach(c => divAlertas.appendChild(criarCartao(c, "Alerta")));
@@ -606,6 +656,7 @@
                 .catch(() => {});
         }
 
+        // Pega as coisas digitadas no formulário e envia pro Python (Salva ou Atualiza)
         function salvarCliente() {
             const pacote = {
                 nome: document.getElementById("input-nome").value, telefone: document.getElementById("input-telefone").value,
@@ -614,6 +665,7 @@
                 status_pagamento: document.getElementById("input-status-pagamento").value, ligar_mais_tarde: document.getElementById("input-ligar").checked,
                 detalhes: document.getElementById("input-detalhes").value, valor: document.getElementById("input-valor").value
             };
+            // Se for pra editar manda num endereço, se for novo manda no outro
             const url = clienteSendoEditadoId ? `/clientes/${clienteSendoEditadoId}` : "/clientes";
             
             fetch(url, { method: clienteSendoEditadoId ? "PUT" : "POST", headers: cabecalhoSeguro(), body: JSON.stringify(pacote) })
@@ -625,8 +677,10 @@
             });
         }
 
+        // Dá baixa de pagamento direto no cartão do cliente
         function pagarServico(id) { fetch("/clientes/" + id + "/pagar", { method: "PUT", headers: cabecalhoSeguro() }).then(r => { if(r.status === 401) return fazerLogout(); carregarClientes(); }); }
         
+        // Exclui do banco de dados (o Python pede a chave de acesso antes)
         function apagarCliente(id) { 
             if (confirm("⚠️ Excluir permanentemente?")) {
                 fetch("/clientes/" + id, { method: "DELETE", headers: cabecalhoSeguro() })
@@ -634,6 +688,7 @@
             }
         }
 
+        // Pede para o Python desenhar o PDF e faz o download pra pasta do usuário
         function baixarRecibo(id, botaoClicado = null) {
             const btn = botaoClicado || document.getElementById('btn-modal-recibo');
             const textoOriginal = btn.innerText; 
