@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
-import psycopg2 # O novo tradutor para o Supabase
+import psycopg2 # O tradutor para o Supabase
 from psycopg2.extras import RealDictCursor
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
@@ -13,6 +13,7 @@ from fastapi import Response
 from fpdf import FPDF
 from fastapi.responses import FileResponse
 
+# Carrega as senhas do arquivo .env (quando rodando no seu computador)
 load_dotenv()
 
 app = FastAPI(title="Gerezin CRM Seguro")
@@ -28,16 +29,17 @@ app.add_middleware(
 # ==========================================
 # CONFIGURAÇÕES DE SEGURANÇA AVANÇADA
 # ==========================================
-CHAVE_SECRETA = os.getenv("SECRET_KEY")
+CHAVE_SECRETA = os.getenv("SECRET_KEY", "chave_padrao_segura")
 ALGORITMO = "HS256"
 TEMPO_EXPIRACAO_MINUTOS = 1440 
 
 triturador_senha = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-USUARIO_MESTRE = {
-    "username": os.getenv("ADMIN_USERNAME"),
-    "senha_triturada": triturador_senha.hash(os.getenv("ADMIN_PASSWORD"))
+# Cria o usuário da loja triturando a senha que vem do .env
+USUARIO_LOJA = {
+    "username": os.getenv("USUARIO_LOJA", "loja"),
+    "senha_triturada": triturador_senha.hash(os.getenv("SENHA_LOJA", "senha123"))
 }
 
 # Pegando a URL do Supabase do cofre
@@ -63,25 +65,53 @@ def verificar_token(token: str = Depends(oauth2_scheme)):
     try:
         dados_decodificados = jwt.decode(token, CHAVE_SECRETA, algorithms=[ALGORITMO])
         usuario: str = dados_decodificados.get("sub")
+        perfil: str = dados_decodificados.get("perfil", "operador") # Puxa o cargo do crachá
         if usuario is None:
             raise HTTPException(status_code=401, detail="Crachá inválido")
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Crachá vencido, faça login novamente")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Crachá falso")
-    return usuario
+    
+    # Devolve um dicionário com nome e cargo
+    return {"usuario": usuario, "perfil": perfil}
 
 @app.post("/login")
 def portaria_login(form_data: OAuth2PasswordRequestForm = Depends()):
-    if form_data.username != USUARIO_MESTRE["username"]:
-        raise HTTPException(status_code=400, detail="Usuário incorreto")
+    usuario_digitado = form_data.username
+    senha_digitada = form_data.password
+
+    # Puxando os usuários e senhas dos chefes do cofre (.env)
+    user_joao = os.getenv("USUARIO_JOAO", "joao_vitor")
+    senha_joao = os.getenv("SENHA_JOAO", "senha_padrao_joao")
     
-    senha_correta = triturador_senha.verify(form_data.password, USUARIO_MESTRE["senha_triturada"])
-    if not senha_correta:
-        raise HTTPException(status_code=400, detail="Senha incorreta")
+    user_teco = os.getenv("USUARIO_TECO", "teco_gerezin")
+    senha_teco = os.getenv("SENHA_TECO", "senha_padrao_teco")
     
-    token_jwt = criar_token_acesso(dados={"sub": form_data.username})
-    return {"access_token": token_jwt, "token_type": "bearer"}
+    perfil = "operador"
+    acesso_permitido = False
+
+    # Verifica João (Chefe)
+    if usuario_digitado == user_joao and senha_digitada == senha_joao:
+        acesso_permitido = True
+        perfil = "chefe"
+    # Verifica Teco (Chefe)
+    elif usuario_digitado == user_teco and senha_digitada == senha_teco:
+        acesso_permitido = True
+        perfil = "chefe"
+    # Verifica Loja (Operador padrão - usando a senha triturada)
+    elif usuario_digitado == USUARIO_LOJA["username"] and triturador_senha.verify(senha_digitada, USUARIO_LOJA["senha_triturada"]):
+        acesso_permitido = True
+        perfil = "operador"
+
+    if not acesso_permitido:
+        raise HTTPException(status_code=400, detail="Usuário ou senha incorretos")
+    
+    # Coloca o perfil dentro do crachá (token)
+    token_jwt = criar_token_acesso(dados={"sub": usuario_digitado, "perfil": perfil})
+    
+    # Devolve para a tela (o HTML precisa saber o perfil para esconder a aba financeiro)
+    return {"access_token": token_jwt, "token_type": "bearer", "perfil": perfil}
 
 
 # ==========================================
@@ -106,7 +136,6 @@ class DadosConclusao(BaseModel):
 def criar_banco_de_dados():
     conexao = conectar_banco()
     caneta = conexao.cursor()
-    # O PostgreSQL usa SERIAL no lugar de AUTOINCREMENT
     caneta.execute('''
         CREATE TABLE IF NOT EXISTS clientes (
             id SERIAL PRIMARY KEY,
@@ -126,16 +155,14 @@ def criar_banco_de_dados():
     caneta.close()
     conexao.close()
 
-# Roda essa função toda vez que o servidor ligar
 criar_banco_de_dados()
 
 # ==========================================
 # AS ROTAS DO SISTEMA (PostgreSQL)
-# Repare que agora usamos %s em vez de ?
 # ==========================================
 
 @app.get("/clientes")
-def listar_clientes(usuario: str = Depends(verificar_token)):
+def listar_clientes(cracha: dict = Depends(verificar_token)):
     conexao = conectar_banco()
     caneta = conexao.cursor(cursor_factory=RealDictCursor)
     caneta.execute("SELECT * FROM clientes ORDER BY id DESC")
@@ -145,7 +172,7 @@ def listar_clientes(usuario: str = Depends(verificar_token)):
     return clientes_crus
 
 @app.post("/clientes")
-def cadastrar_cliente(c: ClienteNovo, usuario: str = Depends(verificar_token)):
+def cadastrar_cliente(c: ClienteNovo, cracha: dict = Depends(verificar_token)):
     conexao = conectar_banco()
     caneta = conexao.cursor()
     caneta.execute(
@@ -158,7 +185,7 @@ def cadastrar_cliente(c: ClienteNovo, usuario: str = Depends(verificar_token)):
     return {"mensagem": "Salvo com sucesso!"}
 
 @app.put("/clientes/{cliente_id}")
-def atualizar_cliente_completo(cliente_id: int, c: ClienteNovo, usuario: str = Depends(verificar_token)):
+def atualizar_cliente_completo(cliente_id: int, c: ClienteNovo, cracha: dict = Depends(verificar_token)):
     conexao = conectar_banco()
     caneta = conexao.cursor()
     caneta.execute('''
@@ -173,7 +200,7 @@ def atualizar_cliente_completo(cliente_id: int, c: ClienteNovo, usuario: str = D
     return {"mensagem": "Cadastro atualizado com sucesso!"}
 
 @app.delete("/clientes/{cliente_id}")
-def apagar_cliente(cliente_id: int, usuario: str = Depends(verificar_token)):
+def apagar_cliente(cliente_id: int, cracha: dict = Depends(verificar_token)):
     conexao = conectar_banco()
     caneta = conexao.cursor()
     caneta.execute("DELETE FROM clientes WHERE id = %s", (cliente_id,))
@@ -183,7 +210,7 @@ def apagar_cliente(cliente_id: int, usuario: str = Depends(verificar_token)):
     return {"mensagem": "Apagado com sucesso!"}
 
 @app.put("/clientes/{cliente_id}/concluir")
-def concluir_servico(cliente_id: int, dados: DadosConclusao, usuario: str = Depends(verificar_token)):
+def concluir_servico(cliente_id: int, dados: DadosConclusao, cracha: dict = Depends(verificar_token)):
     conexao = conectar_banco()
     caneta = conexao.cursor()
     caneta.execute(
@@ -196,7 +223,11 @@ def concluir_servico(cliente_id: int, dados: DadosConclusao, usuario: str = Depe
     return {"mensagem": "Concluído e faturado!"}
 
 @app.put("/clientes/{cliente_id}/pagar")
-def pagar_servico(cliente_id: int, usuario: str = Depends(verificar_token)):
+def pagar_servico(cliente_id: int, cracha: dict = Depends(verificar_token)):
+    # Proteção na porta do banco. Só chefe pode registrar pagamentos diretos!
+    if cracha.get("perfil") != "chefe":
+        raise HTTPException(status_code=403, detail="Acesso negado. Apenas a gerência pode registrar recebimentos.")
+
     conexao = conectar_banco()
     caneta = conexao.cursor()
     caneta.execute("UPDATE clientes SET status_pagamento = 'Pago' WHERE id = %s", (cliente_id,))
@@ -206,7 +237,7 @@ def pagar_servico(cliente_id: int, usuario: str = Depends(verificar_token)):
     return {"mensagem": "Pagamento registrado!"}
 
 @app.get("/clientes/{cliente_id}/recibo")
-def gerar_recibo(cliente_id: int, usuario: str = Depends(verificar_token)):
+def gerar_recibo(cliente_id: int, cracha: dict = Depends(verificar_token)):
     conexao = conectar_banco()
     caneta = conexao.cursor(cursor_factory=RealDictCursor)
     caneta.execute("SELECT * FROM clientes WHERE id = %s", (cliente_id,))
@@ -222,9 +253,9 @@ def gerar_recibo(cliente_id: int, usuario: str = Depends(verificar_token)):
     pdf.add_page()
     
     # Definindo as cores da marca
-    azul_escuro = (15, 23, 42)    # Cor primária do sistema
-    azul_claro = (14, 165, 233)   # Cor secundária
-    cinza_texto = (100, 116, 139) # Cor para textos secundários
+    azul_escuro = (15, 23, 42)
+    azul_claro = (14, 165, 233)
+    cinza_texto = (100, 116, 139)
     
     # ==========================================
     # 1. CABEÇALHO DA EMPRESA
@@ -250,8 +281,7 @@ def gerar_recibo(cliente_id: int, usuario: str = Depends(verificar_token)):
     # ==========================================
     pdf.set_font("helvetica", "B", 14)
     pdf.set_fill_color(azul_claro[0], azul_claro[1], azul_claro[2])
-    pdf.set_text_color(255, 255, 255) # Letra branca
-    # Cria uma faixa azul claro para o título
+    pdf.set_text_color(255, 255, 255)
     pdf.cell(0, 10, "  RECIBO DE PRESTAÇÃO DE SERVIÇO", new_x="LMARGIN", new_y="NEXT", fill=True)
     pdf.ln(8)
 
@@ -295,9 +325,8 @@ def gerar_recibo(cliente_id: int, usuario: str = Depends(verificar_token)):
     # ==========================================
     # 5. VALOR E ASSINATURA
     # ==========================================
-    # Bloco do Valor
     pdf.set_font("helvetica", "B", 16)
-    pdf.set_text_color(16, 185, 129) # Cor Verde esmeralda para dinheiro
+    pdf.set_text_color(16, 185, 129)
     pdf.cell(0, 10, f"VALOR TOTAL COBRADO: R$ {cliente['valor']}", new_x="LMARGIN", new_y="NEXT", align="R")
     
     pdf.set_font("helvetica", "I", 10)
@@ -305,10 +334,9 @@ def gerar_recibo(cliente_id: int, usuario: str = Depends(verificar_token)):
     texto_situacao = "Recebimento confirmado." if cliente['status_pagamento'] == "Pago" else "Pagamento pendente."
     pdf.cell(0, 6, texto_situacao, new_x="LMARGIN", new_y="NEXT", align="R")
     
-    # Assinatura
     pdf.ln(40)
     pdf.set_draw_color(azul_escuro[0], azul_escuro[1], azul_escuro[2])
-    pdf.line(60, pdf.get_y(), 150, pdf.get_y()) # Linha para assinar
+    pdf.line(60, pdf.get_y(), 150, pdf.get_y())
     pdf.ln(2)
     pdf.set_font("helvetica", "B", 11)
     pdf.set_text_color(azul_escuro[0], azul_escuro[1], azul_escuro[2])
@@ -329,12 +357,10 @@ def gerar_recibo(cliente_id: int, usuario: str = Depends(verificar_token)):
 # ==========================================
 @app.get("/")
 def abrir_sistema():
-    # Quando alguém acessar o link raiz, entrega o HTML
     return FileResponse("index.html")
 
 @app.get("/{nome_arquivo}")
 def entregar_arquivos_extras(nome_arquivo: str):
-    # Entrega a logo e o favicon se o HTML pedir
     import os
     if os.path.exists(nome_arquivo):
         return FileResponse(nome_arquivo)
