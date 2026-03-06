@@ -360,7 +360,7 @@
             pacoteLogin.append("username", usuario);
             pacoteLogin.append("password", senha);
 
-            fetch("http://localhost:8000/login", { method: "POST", body: pacoteLogin })
+            fetch("/login", { method: "POST", body: pacoteLogin })
             .then(resposta => {
                 if(!resposta.ok) throw new Error("Acesso Negado");
                 return resposta.json();
@@ -505,7 +505,7 @@
             const statusPgto = document.getElementById("input-modal-pago").value;
             if(!valor) { alert("Informe o valor cobrado!"); return; }
 
-            fetch("http://localhost:8000/clientes/" + idParaConcluir + "/concluir", { 
+            fetch("/clientes/" + idParaConcluir + "/concluir", { 
                 method: "PUT", headers: cabecalhoSeguro(), body: JSON.stringify({ valor: valor, status_pagamento: statusPgto })
             }).then(r => {
                 if(r.status === 401) return fazerLogout();
@@ -537,7 +537,7 @@
         }
 
         function carregarClientes() {
-            fetch("http://localhost:8000/clientes", { headers: cabecalhoSeguro() })
+            fetch("/clientes", { headers: cabecalhoSeguro() })
                 .then(resposta => {
                     if (resposta.status === 401) { fazerLogout(); throw new Error("Token expirado"); }
                     return resposta.json();
@@ -681,7 +681,7 @@
                 status_pagamento: document.getElementById("input-status-pagamento").value, ligar_mais_tarde: document.getElementById("input-ligar").checked,
                 detalhes: document.getElementById("input-detalhes").value, valor: document.getElementById("input-valor").value
             };
-            const url = clienteSendoEditadoId ? `http://localhost:8000/clientes/${clienteSendoEditadoId}` : "http://localhost:8000/clientes";
+            const url = clienteSendoEditadoId ? `/clientes/${clienteSendoEditadoId}` : "/clientes";
             
             fetch(url, { method: clienteSendoEditadoId ? "PUT" : "POST", headers: cabecalhoSeguro(), body: JSON.stringify(pacote) })
             .then(r => { 
@@ -692,11 +692,11 @@
             });
         }
 
-        function pagarServico(id) { fetch("http://localhost:8000/clientes/" + id + "/pagar", { method: "PUT", headers: cabecalhoSeguro() }).then(r => { if(r.status === 401) return fazerLogout(); carregarClientes(); }); }
+        function pagarServico(id) { fetch("/clientes/" + id + "/pagar", { method: "PUT", headers: cabecalhoSeguro() }).then(r => { if(r.status === 401) return fazerLogout(); carregarClientes(); }); }
         
         function apagarCliente(id) { 
             if (confirm("⚠️ Excluir permanentemente?")) {
-                fetch("http://localhost:8000/clientes/" + id, { method: "DELETE", headers: cabecalhoSeguro() })
+                fetch("/clientes/" + id, { method: "DELETE", headers: cabecalhoSeguro() })
                 .then(r => { if(r.status === 401) return fazerLogout(); carregarClientes(); }); 
             }
         }
@@ -708,7 +708,7 @@
             const textoOriginal = btn.innerText; 
             btn.innerText = "⏳ Gerando...";
             
-            fetch("http://localhost:8000/clientes/" + id + "/recibo", { headers: cabecalhoSeguro() })
+            fetch("/clientes/" + id + "/recibo", { headers: cabecalhoSeguro() })
             .then(resposta => {
                 if(resposta.status === 401) return fazerLogout();
                 if(!resposta.ok) throw new Error("Erro ao gerar");
