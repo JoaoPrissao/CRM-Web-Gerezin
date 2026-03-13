@@ -12,6 +12,7 @@ const IC = {
     tool:    `<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>`,
     cal:     `<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`,
     phone:   `<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>`,
+    message: `<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>`,
 };
 
 // === TOAST ===
@@ -209,6 +210,7 @@ function abrirModalDetalhes(id) {
     document.getElementById('linha-detalhe-valor').classList.toggle('hidden', !val);
     if (val) document.getElementById('detalhe-valor').innerText = fmt.format(parseFloat(c.valor));
     document.getElementById('detalhe-obs').innerText = c.detalhes || "Nenhuma anotação extra.";
+    document.getElementById('btn-modal-mensagem').href = `https://wa.me/55${c.telefone.replace(/\D/g,'')}?text=Olá`;
     document.getElementById('btn-modal-recibo').onclick = () => baixarRecibo(c.id, document.getElementById('btn-modal-recibo'));
     document.getElementById('btn-modal-editar').onclick = () => { fecharModalDetalhes(); prepararEdicao(c.id); };
     document.getElementById('btn-modal-excluir').onclick = () => { fecharModalDetalhes(); apagarCliente(c.id); };
@@ -351,27 +353,31 @@ function criarCartao(cliente, contexto) {
                 : `<span class="px-3 py-1 bg-slate-500/10 text-slate-600 border border-slate-500/20 rounded-full text-xs font-bold ml-2">📝 FILA</span>`)
         : '';
 
-    const base = "bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 flex flex-col xl:flex-row justify-between items-center text-center xl:text-left gap-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 ";
+    const base = "bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl p-6 rounded-3xl shadow-xl border border-white/40 dark:border-slate-700 flex flex-col gap-4 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 ";
     if (contexto==="Fila"||(contexto==="Histórico"&&cliente.status_servico==="Agendado")) el.className = base+"border-l-4 border-secundaria";
     else if (contexto==="Alerta") el.className = base+"border-l-4 border-orange-500 bg-orange-50/50";
     else if (contexto==="Financeiro") el.className = base+(cliente.status_pagamento==="Pago"?"border-l-4 border-emerald-500":"border-l-4 border-amber-500");
     else el.className = base;
 
-    let acoes = `<div class="flex flex-wrap gap-3 w-full xl:w-auto mt-4 xl:mt-0 justify-center xl:justify-end">`;
+    let acoes = `<div class="flex flex-wrap gap-3 justify-center xl:justify-start">`;
     if (cliente.status_servico==="Concluído"&&(contexto==="Histórico"||contexto==="Financeiro"))
         acoes += `<button onclick="baixarRecibo(${cliente.id},this)" class="px-5 py-2.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border border-emerald-200 dark:border-emerald-900 rounded-xl font-bold text-sm transition-all hover:bg-emerald-500 hover:text-white flex items-center gap-2">${IC.receipt} Recibo</button>`;
-    if (contexto==="Fila"||contexto==="Histórico")
-        acoes += `<button onclick="prepararEdicao(${cliente.id})" class="px-5 py-2.5 bg-white dark:bg-slate-900 border border-blue-200 text-blue-500 rounded-xl font-bold text-sm flex items-center gap-2">${IC.edit} Editar</button>`;
+    if (contexto==="Fila"||contexto==="Histórico"||contexto==="Financeiro") {
+        acoes += `<a href="https://wa.me/55${cliente.telefone.replace(/\D/g,'')}?text=Olá" target="_blank" class="px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-green-600 transition-all">${IC.message} Mensagem</a>`;
+    }
+    if (contexto==="Fila"||contexto==="Histórico") {
+        acoes += `<button onclick="prepararEdicao(${cliente.id})" class="px-5 py-2.5 bg-white dark:bg-slate-900 border border-blue-200 text-blue-500 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-blue-50">${IC.edit} Editar</button>`;
+    }
     if (cliente.status_pagamento==="Pendente"&&cliente.status_servico==="Concluído"&&contexto!=="Alerta"&&perfil==="chefe")
-        acoes += `<button onclick="pagarServico(${cliente.id})" class="px-5 py-2.5 bg-white border-2 border-emerald-500 text-emerald-600 rounded-xl font-bold text-sm flex items-center gap-2">${IC.money} Receber ${valorFmt}</button>`;
+        acoes += `<button onclick="pagarServico(${cliente.id})" class="px-5 py-2.5 bg-white border-2 border-emerald-500 text-emerald-600 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-50">${IC.money} Receber</button>`;
     if (contexto==="Fila") {
-        acoes += `<button onclick="abrirModalConcluir(${cliente.id})" class="px-5 py-2.5 bg-secundaria text-white rounded-xl font-bold text-sm flex items-center gap-2">${IC.check} Concluir</button>`;
-        acoes += `<button onclick="apagarCliente(${cliente.id})" class="px-4 py-2.5 bg-red-50 text-red-500 rounded-xl font-bold flex items-center">${IC.trash}</button>`;
+        acoes += `<button onclick="abrirModalConcluir(${cliente.id})" class="px-5 py-2.5 bg-secundaria text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-sky-500">${IC.check} Concluir</button>`;
+        acoes += `<button onclick="apagarCliente(${cliente.id})" class="px-5 py-2.5 bg-red-50 text-red-500 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-red-500 hover:text-white">${IC.trash} Deletar</button>`;
     } else if (contexto==="Histórico"||contexto==="Financeiro")
-        acoes += `<button onclick="apagarCliente(${cliente.id})" class="px-5 py-2.5 bg-white border border-red-200 text-red-500 rounded-xl font-bold text-sm flex items-center gap-2">${IC.trash} Excluir</button>`;
+        acoes += `<button onclick="apagarCliente(${cliente.id})" class="px-5 py-2.5 bg-white border border-red-200 text-red-500 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-red-500 hover:text-white">${IC.trash} Deletar</button>`;
     else if (contexto==="Alerta") {
-        acoes += `<a href="https://wa.me/55${cliente.telefone.replace(/\D/g,'')}?text=Olá" target="_blank" class="px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm flex items-center gap-2">💬 Conversar</a>`;
-        acoes += `<button onclick="abrirModalRobo(${cliente.id})" class="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-sm flex items-center gap-2">${IC.check} Registrar contato</button>`;
+        acoes += `<a href="https://wa.me/55${cliente.telefone.replace(/\D/g,'')}?text=Olá" target="_blank" class="px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-green-600 transition-all">💬 Conversar</a>`;
+        acoes += `<button onclick="abrirModalRobo(${cliente.id})" class="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all">${IC.check} Registrar Contato</button>`;
     }
     acoes += `</div>`;
 
@@ -386,23 +392,25 @@ function criarCartao(cliente, contexto) {
     }
 
     el.innerHTML = `
-        <div class="flex-1 w-full">
-            <div class="flex flex-col xl:flex-row items-center gap-4 mb-4">
-                <h4 class="text-2xl font-black text-primaria dark:text-white">${cliente.nome}</h4>
-                <div>${cliente.status_servico==="Concluído"?badgePgto:""}${badgeLigar}${badgeStatus}</div>
+        <div class="text-left">
+            <div class="flex flex-col gap-3 mb-3">
+                <div class="flex items-baseline gap-3 flex-wrap">
+                    <h4 class="text-2xl font-black text-primaria dark:text-white">${cliente.nome}</h4>
+                    <div class="flex flex-wrap gap-2">${cliente.status_servico==="Concluído"?badgePgto:""}${badgeLigar}${badgeStatus}</div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm font-medium">
+                    <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2 text-secundaria">
+                        ${IC.tool}<span class="dark:text-slate-300 text-slate-700">${cliente.tipo_servico}</span>
+                    </div>
+                    <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2 text-secundaria">
+                        ${IC.cal}<span class="dark:text-slate-300 text-slate-700">${dataFmt}</span>
+                    </div>
+                    <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2 col-span-1 md:col-span-2 text-secundaria">
+                        ${IC.phone}<span class="dark:text-slate-300 text-slate-700">${cliente.telefone} &nbsp;|&nbsp; 📍 ${cliente.endereco}</span>
+                    </div>
+                </div>
+                ${info}
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm font-medium">
-                <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2 text-secundaria">
-                    ${IC.tool}<span class="dark:text-slate-300 text-slate-700">${cliente.tipo_servico}</span>
-                </div>
-                <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2 text-secundaria">
-                    ${IC.cal}<span class="dark:text-slate-300 text-slate-700">${dataFmt}</span>
-                </div>
-                <div class="bg-slate-100/50 dark:bg-slate-900/50 py-2 px-4 rounded-lg flex items-center gap-2 col-span-1 md:col-span-2 text-secundaria">
-                    ${IC.phone}<span class="dark:text-slate-300 text-slate-700">${cliente.telefone} &nbsp;|&nbsp; 📍 ${cliente.endereco}</span>
-                </div>
-            </div>
-            ${info}
         </div>
         ${acoes}`;
     return el;
