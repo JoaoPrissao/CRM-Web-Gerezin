@@ -443,7 +443,7 @@ function carregarClientes() {
             const umAno = 1000*60*60*24*365;
             const alertas = dados.filter(c => c.status_servico==="Concluído").filter(c => {
                 if ((c.detalhes || "").startsWith("__INATIVO__")) return false;
-                const ehAr = ["limpeza","instala","ar"].some(k => c.tipo_servico.toLowerCase().includes(k));
+                const ehAr = ["limp","inst","ar"].some(k => c.tipo_servico.toLowerCase().includes(k));
                 return ehAr && (new Date()-new Date(c.data_servico)) > umAno;
             });
             if (calendarioApp) {

@@ -43,7 +43,6 @@ Gerezin_CRM/
 ├── pdf_service.py      # Lógica isolada de geração de relatórios PDF
 ├── routes.py           # Endpoints da API (CRUD e Financeiro)
 ├── main.py             # Arquivo principal que orquestra a aplicação
-├── migrar_dados.py     # Script ETL para importação de clientes legados
 ├── frontend/
 │   ├── index.html      # Estrutura visual principal
 │   ├── logo_gerezin.png
@@ -62,7 +61,7 @@ Gerezin_CRM/
 
 **1. Clone o repositório:**
 ```bash
-git clone [https://github.com/JoaoPrissao/CRM-Web-Gerezin.git](https://github.com/JoaoPrissao/CRM-Web-Gerezin.git)
+git clone https://github.com/JoaoPrissao/CRM-Web-Gerezin.git
 cd CRM-Web-Gerezin
 ```
 
@@ -89,8 +88,13 @@ SENHA_LOJA=senha_aqui
 ```
 
 **4. Inicie o servidor:**
+
 ```bash
+# Desenvolvimento (com hot reload)
 uvicorn main:app --reload
+
+# Produção (via Docker / Render)
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 Acesse em: `http://localhost:8000`
@@ -104,8 +108,6 @@ O token JWT de autenticação é armazenado no `localStorage` do navegador. Esta
 ---
 
 ## Próximos Passos
-
-Após a conclusão da refatoração e modularização completa do código, as próximas etapas focam em aprimorar a segurança e escalabilidade:
 
 - **Segurança:** Migrar o armazenamento do token JWT para cookies `httpOnly`.
 - **Testes:** Implementar testes automatizados para as rotas da API utilizando `pytest`.
