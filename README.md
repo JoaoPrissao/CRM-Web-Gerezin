@@ -1,65 +1,111 @@
 # ❄️ Gerezin CRM & Gestão Financeira
 
-Um sistema completo de Gestão de Relacionamento com o Cliente (CRM) e Controle Financeiro, desenvolvido sob medida para a empresa **T.J.L Refrigeração LTDA (Gerezin)**. 
+CRM desenvolvido para a **T.J.L Refrigeração LTDA (Gerezin)**, cobrindo gestão de ordens de serviço, controle financeiro e automação de retenção de clientes. Backend em FastAPI, banco de dados PostgreSQL via Supabase, deploy em produção via Render + Docker.
 
-Este projeto foi construído para modernizar o controle de agendamentos, automatizar a geração de recibos e proteger os dados sensíveis da empresa através de um sistema robusto de controle de acesso.
+O projeto nasceu da necessidade de substituir o controle manual em papel por um sistema centralizado, com geração automática de recibos e controle de acesso por perfis de usuário.
 
-## 🚀 Principais Funcionalidades
+---
 
-* **Gestão Operacional:** Cadastro, edição e exclusão rápida de clientes e Ordens de Serviço.
-* **Controle de Acesso por Perfis:** * **Perfil Chefe/Gerência:** Acesso total, incluindo o financeiro, faturamento e recebimentos diretos.
-  * **Perfil Operador/Loja:** Acesso focado na fila de trabalho e histórico, com bloqueio automático à visão do dinheiro e faturamento.
-* **Gerador de Recibos (PDF):** Criação automática de recibos profissionais personalizados, prontos para impressão ou envio no WhatsApp.
-* **Dashboard Financeiro:** Gráficos visuais de fluxo de caixa e exportação de relatórios completos para o Excel (`.xlsx`).
-* **Agenda Interativa:** Calendário para visualização clara de todos os serviços programados do mês.
-* **Robô de Retenção:** Avisos automáticos mostrando quais clientes precisam de manutenção preventiva (1 ano após o último serviço de Ar Condicionado).
+## Funcionalidades
 
-## 🛠️ Ferramentas Utilizadas
+- **Gestão Operacional:** Cadastro, edição, busca com filtros e exclusão de clientes e Ordens de Serviço.
+- **Segurança e Controle de Acesso:** Autenticação JWT e senhas protegidas com hash (Bcrypt).
+  - **Gerência:** Acesso completo, incluindo painel financeiro e faturamento.
+  - **Operador:** Acesso restrito à fila de trabalho e histórico de clientes.
+- **Gerador de Recibos (PDF):** Recibos profissionais com identidade visual da empresa, prontos para impressão ou envio via WhatsApp.
+- **Dashboard Financeiro:** Visualização de fluxo de caixa com exportação de relatórios para Excel (`.xlsx`).
+- **Agenda Interativa:** Calendário com todos os serviços agendados do mês.
+- **Robô de Retenção:** Alertas automáticos para clientes que realizaram serviço de ar-condicionado há exatamente 1 ano. Inclui fluxo de CRM completo para registrar novas manutenções, reagendar contatos futuros ou inativar clientes.
+- **UI/UX Responsiva:** Interface adaptável para dispositivos móveis com menu hambúrguer, suporte a *Dark Mode* e notificações não-bloqueantes (Toasts).
 
-* **Python & FastAPI:** O "motor" principal do sistema, rápido e moderno.
-* **PostgreSQL (Supabase):** Banco de dados seguro e hospedado na nuvem.
-* **HTML, Javascript & Tailwind CSS:** A "lataria e pintura" do sistema, com visual moderno e Modo Escuro (Dark Mode).
-* **Render & Docker:** Onde o sistema fica hospedado funcionando 24 horas por dia na internet.
+---
 
-## 📂 Organização das Pastas
+## Stack
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Backend | Python 3.11, FastAPI, Passlib (Bcrypt), JWT |
+| Banco de dados | PostgreSQL (Supabase) |
+| Frontend | HTML, JavaScript, Tailwind CSS |
+| Deploy | Render, Docker |
+
+---
+
+## Estrutura do Projeto
+
+A arquitetura do projeto segue o padrão modular (Separation of Concerns) para facilitar a manutenção e escalabilidade:
 
 ```text
 Gerezin_CRM/
-├── frontend/             # A tela que o usuário vê (HTML e imagens)
-│   ├── index.html
+├── database.py         # Conexão e inicialização do banco de dados
+├── models.py           # Modelos de validação de dados (Pydantic)
+├── security.py         # Lógica de autenticação JWT e hashing
+├── pdf_service.py      # Lógica isolada de geração de relatórios PDF
+├── routes.py           # Endpoints da API (CRUD e Financeiro)
+├── main.py             # Arquivo principal que orquestra a aplicação
+├── migrar_dados.py     # Script ETL para importação de clientes legados
+├── frontend/
+│   ├── index.html      # Estrutura visual principal
 │   ├── logo_gerezin.png
-│   └── favicon.png
-├── main.py               # O motor principal em Python
-├── requirements.txt      # A lista de ferramentas instaladas
-├── Dockerfile            # A receita para ligar o servidor na nuvem
-└── README.md             # Este manual que você está lendo
+│   ├── favicon.png
+│   └── assets/
+│       ├── style.css   # Estilos e animações personalizadas
+│       └── app.js      # Lógica de interface e consumo da API
+├── requirements.txt
+├── Dockerfile
+└── README.md
 ```
 
-## 💻 Como rodar no seu próprio computador
+---
 
-Para rodar este projeto no seu PC para fazer testes, siga os passos abaixo:
+## Rodando localmente
 
-1. **Baixe o código para o seu computador:**
-   ```bash
-   git clone https://github.com/JoaoPrissao/CRM-Web-Gerezin-SaaS-.git(https://github.com/SEU_NOME_DE_USUARIO_AQUI/NOME_DO_REPOSITORIO.git)
-   cd NOME_DO_REPOSITORIO
-   ```
+**1. Clone o repositório:**
+```bash
+git clone [https://github.com/JoaoPrissao/CRM-Web-Gerezin.git](https://github.com/JoaoPrissao/CRM-Web-Gerezin.git)
+cd CRM-Web-Gerezin
+```
 
-2. **Ligue a sua caixa de ferramentas virtual e instale as dependências:**
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+**2. Crie e ative o ambiente virtual:**
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-3. **Configure as suas senhas secretas:**
-   Crie um arquivo chamado `.env` na pasta principal do projeto e coloque as suas senhas de login e o link do seu banco de dados lá dentro.
+**3. Configure as variáveis de ambiente:**
 
-4. **Ligue o motor do sistema:**
-   ```bash
-   uvicorn main:app --reload
-   ```
-   Agora é só abrir o seu navegador de internet e acessar: `http://localhost:8000`
+Crie um arquivo `.env` na raiz do projeto contendo as credenciais do banco e os usuários de acesso:
+
+```env
+DATABASE_URL=sua_url_do_supabase
+SECRET_KEY=sua_chave_secreta_jwt
+USUARIO_JOAO=joao_vitor
+SENHA_JOAO=senha_aqui
+USUARIO_TECO=teco_gerezin
+SENHA_TECO=senha_aqui
+USUARIO_LOJA=loja
+SENHA_LOJA=senha_aqui
+```
+
+**4. Inicie o servidor:**
+```bash
+uvicorn main:app --reload
+```
+
+Acesse em: `http://localhost:8000`
 
 ---
-*Projeto desenvolvido por João Vitor Prissão Oliveira, buscando aplicar os conceitos práticos da Engenharia de Computação para modernizar a prestação de serviços reais.*
+
+## Limitações Conhecidas
+
+O token JWT de autenticação é armazenado no `localStorage` do navegador. Esta abordagem é funcional para o escopo atual, mas expõe o token a possíveis ataques XSS em ambientes de produção mais críticos. A solução mais robusta seria migrar para cookies `httpOnly`, que são inacessíveis via JavaScript. Esta melhoria está planejada para uma versão futura.
+
+---
+
+## Próximos Passos
+
+Após a conclusão da refatoração e modularização completa do código, as próximas etapas focam em aprimorar a segurança e escalabilidade:
+
+- **Segurança:** Migrar o armazenamento do token JWT para cookies `httpOnly`.
+- **Testes:** Implementar testes automatizados para as rotas da API utilizando `pytest`.
