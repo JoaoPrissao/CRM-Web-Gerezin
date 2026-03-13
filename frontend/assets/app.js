@@ -93,9 +93,31 @@ function mudarAba(id, btn) {
     if (id==='calendario' && calendarioApp) setTimeout(() => calendarioApp.render(), 100);
 }
 
-// === MODAIS ===
-// === MODAL ROBÔ ===
-let idRoboAtual = null, prazoRoboMeses = 3;
+// === SUPORTE PARA ABRIR EM NOVA ABA ===
+function abrirEmNovaAba(e, clienteId) {
+    if (e.button === 2 || (e.ctrlKey && e.button === 0)) {
+        e.preventDefault();
+        const url = new URL(window.location.href);
+        url.searchParams.set('editar', clienteId);
+        window.open(url.toString(), '_blank');
+    }
+}
+
+// Função para verificar URL e abrir edição automática se necessário
+function verificarParametroEditar() {
+    const params = new URLSearchParams(window.location.search);
+    const clienteId = params.get('editar');
+    if (clienteId) {
+        setTimeout(() => {
+            const cliente = listaDeClientesAtuais.find(c => c.id === parseInt(clienteId));
+            if (cliente) {
+                prepararEdicao(parseInt(clienteId));
+                mudarAba('novo', document.getElementById('btn-menu-novo'));
+                document.title = `Editar - ${cliente.nome}`;
+            }
+        }, 500);
+    }
+}
 
 function abrirModalRobo(id) {
     idRoboAtual = id;
@@ -230,7 +252,7 @@ function iniciarCalendario() {
     });
     calendarioApp.render();
 }
-document.addEventListener('DOMContentLoaded', () => { iniciarCalendario(); checarAcesso(); });
+document.addEventListener('DOMContentLoaded', () => { iniciarCalendario(); checarAcesso(); verificarParametroEditar(); });
 
 // === FORM ===
 function verificarStatus() {
@@ -361,12 +383,12 @@ function criarCartao(cliente, contexto) {
 
     let acoes = `<div class="flex flex-wrap gap-3 justify-center xl:justify-start">`;
     if (cliente.status_servico==="Concluído"&&(contexto==="Histórico"||contexto==="Financeiro"))
-        acoes += `<button onclick="baixarRecibo(${cliente.id},this)" class="px-5 py-2.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border border-emerald-200 dark:border-emerald-900 rounded-xl font-bold text-sm transition-all hover:bg-emerald-500 hover:text-white flex items-center gap-2">${IC.receipt} Recibo</button>`;
+        acoes += `<button onmousedown="abrirEmNovaAba(event, ${cliente.id})" onclick="baixarRecibo(${cliente.id},this)" class="px-5 py-2.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border border-emerald-200 dark:border-emerald-900 rounded-xl font-bold text-sm transition-all hover:bg-emerald-500 hover:text-white flex items-center gap-2" title="Clique com botão direito para abrir em nova aba">${IC.receipt} Recibo</button>`;
     if (contexto==="Fila"||contexto==="Histórico"||contexto==="Financeiro") {
         acoes += `<a href="https://wa.me/55${cliente.telefone.replace(/\D/g,'')}?text=Olá" target="_blank" class="px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-green-600 transition-all">${IC.message} Mensagem</a>`;
     }
     if (contexto==="Fila"||contexto==="Histórico") {
-        acoes += `<button onclick="prepararEdicao(${cliente.id})" class="px-5 py-2.5 bg-white dark:bg-slate-900 border border-blue-200 text-blue-500 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-blue-50">${IC.edit} Editar</button>`;
+        acoes += `<button onmousedown="abrirEmNovaAba(event, ${cliente.id})" onclick="prepararEdicao(${cliente.id}); mudarAba('novo', document.getElementById('btn-menu-novo'))" class="px-5 py-2.5 bg-white dark:bg-slate-900 border border-blue-200 text-blue-500 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-blue-50" title="Clique com botão direito para abrir em nova aba">${IC.edit} Editar</button>`;
     }
     if (cliente.status_pagamento==="Pendente"&&cliente.status_servico==="Concluído"&&contexto!=="Alerta"&&perfil==="chefe")
         acoes += `<button onclick="pagarServico(${cliente.id})" class="px-5 py-2.5 bg-white border-2 border-emerald-500 text-emerald-600 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-50">${IC.money} Receber</button>`;
