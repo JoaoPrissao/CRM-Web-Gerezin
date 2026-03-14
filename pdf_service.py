@@ -76,4 +76,4 @@ def gerar_pdf_recibo(cliente: dict) -> bytes:
     pdf.set_font("helvetica", "", 9)
     pdf.cell(0, 5, "Assinatura do Responsável Técnico", new_x="LMARGIN", new_y="NEXT", align="C")
 
-    return pdf.output()
+    return bytes(pdf.output())
